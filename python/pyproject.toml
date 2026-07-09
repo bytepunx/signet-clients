@@ -1,0 +1,24 @@
+[project]
+name = "signet-client"
+version = "0.1.0"
+description = "Python client for signet, generated from bytepunx/signet-proto"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+dependencies = [
+    "grpcio>=1.66",
+    "protobuf>=5.27",
+]
+
+[project.optional-dependencies]
+dev = ["grpcio-tools>=1.66", "pytest>=8.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# buf generate lays output out mirroring the proto package path
+# (src/signet/v1/*_pb2.py, src/admin/v1/*_pb2.py) — adjust once the first
+# successful `buf generate` confirms the exact layout.
+packages = ["src/signet", "src/admin"]

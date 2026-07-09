@@ -1,0 +1,32 @@
+version: v2
+managed:
+  enabled: true
+  disable:
+    - file_option: java_package
+    - file_option: java_outer_classname
+    - file_option: java_multiple_files
+    - file_option: java_string_check_utf8
+    - file_option: csharp_namespace
+    - file_option: ruby_package
+    - file_option: objc_class_prefix
+    - file_option: php_namespace
+    - file_option: php_metadata_namespace
+    - file_option: optimize_for
+    - file_option: cc_enable_arenas
+  override:
+    - file_option: go_package_prefix
+      value: github.com/bytepunx/signet-clients/go/gen
+plugins:
+  - remote: buf.build/protocolbuffers/go
+    out: gen
+    opt:
+      - paths=source_relative
+  - remote: buf.build/grpc/go
+    out: gen
+    opt:
+      - paths=source_relative
+# Pinned independently of signet's own buf.gen.yaml — this client can track a
+# different signet-proto version than the server. Update to a specific
+# :vX.Y.Z label once tagged releases exist.
+inputs:
+  - module: buf.build/bytepunx/signet-proto

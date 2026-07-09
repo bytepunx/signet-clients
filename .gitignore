@@ -1,0 +1,13 @@
+# Generated stubs for scaffolded-but-not-yet-implemented clients are not committed
+# yet — buf.gen.yaml is verified in CI as a smoke test instead. Once a language's
+# wrapper layer is implemented (see README status table), remove its entry here
+# and commit the generated output, matching go/gen.
+python/src/signet/
+python/src/admin/
+typescript/src/gen/
+typescript/dist/
+rust/src/gen/
+rust/target/
+csharp/gen/
+csharp/bin/
+csharp/obj/

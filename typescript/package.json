@@ -1,0 +1,20 @@
+{
+  "name": "@bytepunx/signet-client",
+  "version": "0.1.0",
+  "description": "TypeScript/Node client for signet, generated from bytepunx/signet-proto",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test dist/**/*.test.js"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.10.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

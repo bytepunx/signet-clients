@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go client
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache: true
+
+      - name: Set up buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: Regenerate proto stubs
+        run: buf generate
+
+      - name: Fail if gen/ has uncommitted changes
+        run: |
+          if ! git diff --quiet gen/; then
+            echo "::error::go/gen is out of sync with the pinned signet-proto module. Run 'buf generate' in go/ and commit the result."
+            git diff gen/
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test -race -count=1 ./...
+
+  codegen-smoke-test:
+    name: buf generate (${{ matrix.dir }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: [python, typescript, rust, csharp]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      # These clients aren't implemented yet (see README status table) and don't
+      # commit generated output — this just proves buf.gen.yaml still resolves
+      # against the current signet-proto schema.
+      - name: buf generate
+        working-directory: ${{ matrix.dir }}
+        run: buf generate

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackageId>Signet.Client</PackageId>
+    <Version>0.1.0</Version>
+    <Description>C# client for signet, generated from bytepunx/signet-proto</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.Net.Client" Version="2.63.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.27.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="gen/**/*.cs" />
+  </ItemGroup>
+
+</Project>
