@@ -44,6 +44,55 @@ status, err := admin.Status(ctx, &adminv1.StatusRequest{})
 
 See `examples/getsecret` for a complete runnable example.
 
+### Coordinated restarts (no process host, no environment injection)
+
+`WatchBundle`/`AcquireLock`/`WaitForRestart` let a service pull its own configuration
+directly and in-memory, and safely coordinate a fleet-wide serialized restart when it
+changes — without [kickr](https://github.com/bytepunx/kickr) (a process-host base image
+that injects the bundle into a child process's environment) and without ever writing
+secrets to the OS environment, where they'd be readable via `/proc/<pid>/environ` by
+anything sharing the pod's PID namespace.
+
+This library deliberately does **not**:
+- spawn or supervise a child process — it's embedded directly in the process that's
+  configuring itself from the bundle;
+- write the bundle to environment variables, files, or anywhere outside memory;
+- refetch the bundle after the lock is acquired — since there's no replacement process to
+  hand it to, the *next* process instance (started fresh by Kubernetes after this one
+  exits) fetches it during its own normal startup.
+
+```go
+client := signet.SecretsClient(conn)
+
+// Fetch once at startup, configure the app in memory.
+bundle, err := client.GetServiceBundle(ctx, &signetv1.GetServiceBundleRequest{
+    Namespace: "default", Service: "example",
+})
+
+// ... serve traffic ...
+
+// Block until signet reports a change AND this replica holds the restart
+// lock (at most one replica restarts at a time, fleet-wide).
+lock, err := signet.WaitForRestart(ctx, client, "default", "example",
+    30*time.Second /* lock TTL — must cover your graceful shutdown */,
+    10*time.Second /* debounce — absorb rapid successive changes */)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Do your own graceful shutdown: drain in-flight requests, close resources.
+
+lock.Release() // release the lock for the next waiting replica
+os.Exit(0)      // Kubernetes restarts the pod; the new process fetches fresh config
+```
+
+`Lock.Lost()` reports if the lock is lost unexpectedly (stream error, missed heartbeats)
+before you call `Release` — treat that as "another replica may now restart concurrently."
+
+See `examples/restart-on-change` for a complete runnable example, and
+[signet's restart-lock docs](https://github.com/bytepunx/signet/blob/main/docs/restart-lock.md)
+for the underlying protocol.
+
 ## Regenerating stubs
 
 ```
