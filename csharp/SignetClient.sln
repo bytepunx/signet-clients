@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SignetClient", "SignetClient.csproj", "{16928344-8495-4F7F-89BA-F7B458181A37}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SignetClient.Tests", "SignetClient.Tests\SignetClient.Tests.csproj", "{C68CA0BA-ED02-4EC3-8574-BF8AAD64C756}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{16928344-8495-4F7F-89BA-F7B458181A37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{16928344-8495-4F7F-89BA-F7B458181A37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{16928344-8495-4F7F-89BA-F7B458181A37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{16928344-8495-4F7F-89BA-F7B458181A37}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C68CA0BA-ED02-4EC3-8574-BF8AAD64C756}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C68CA0BA-ED02-4EC3-8574-BF8AAD64C756}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C68CA0BA-ED02-4EC3-8574-BF8AAD64C756}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C68CA0BA-ED02-4EC3-8574-BF8AAD64C756}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

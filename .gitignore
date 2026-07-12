@@ -18,3 +18,5 @@ csharp/obj/
 # ignored permanently regardless of implementation status.
 typescript/dist/
 typescript/node_modules/
+csharp/SignetClient.Tests/bin/
+csharp/SignetClient.Tests/obj/
