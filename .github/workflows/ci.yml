@@ -47,24 +47,111 @@ jobs:
       - name: go test
         run: go test -race -count=1 ./...
 
-  codegen-smoke-test:
-    name: buf generate (${{ matrix.dir }})
+  python:
+    name: Python client
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        dir: [python, typescript, rust, csharp]
+    defaults:
+      run:
+        working-directory: python
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
 
       - name: Set up buf
         uses: bufbuild/buf-action@v1
         with:
           setup_only: true
 
-      # These clients aren't implemented yet (see README status table) and don't
-      # commit generated output — this just proves buf.gen.yaml still resolves
-      # against the current signet-proto schema.
       - name: buf generate
-        working-directory: ${{ matrix.dir }}
         run: buf generate
+
+      - name: Install package
+        run: pip install .
+
+      # No wrapper code exists yet (see README status table) — this at
+      # least proves the generated stubs actually import as the package
+      # pyproject.toml claims to ship, not just that buf generate exits 0.
+      - name: Verify generated modules import
+        run: python -c "import signet.v1.secrets_pb2; import admin.v1.admin_pb2"
+
+  typescript:
+    name: TypeScript client
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+
+      - name: Set up buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: buf generate
+        run: buf generate
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+  rust:
+    name: Rust client
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: buf generate
+        run: buf generate
+
+      - name: cargo build
+        run: cargo build
+
+  csharp:
+    name: C# client
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: csharp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Set up buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: buf generate
+        run: buf generate
+
+      - name: dotnet build
+        run: dotnet build

@@ -6,8 +6,12 @@ python/src/signet/
 python/src/admin/
 typescript/src/gen/
 typescript/dist/
+typescript/node_modules/
 rust/src/gen/
 rust/target/
+# Library crate — consumers resolve their own dependency tree; regenerated
+# fresh by CI on every run.
+rust/Cargo.lock
 csharp/gen/
 csharp/bin/
 csharp/obj/

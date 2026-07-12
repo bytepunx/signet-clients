@@ -8,6 +8,9 @@ plugins:
       - outputServices=grpc-js
       - esModuleInterop=true
       - useExactTypes=false
+      # tsconfig.json uses moduleResolution=NodeNext (ESM), which requires
+      # explicit extensions on relative imports.
+      - importSuffix=.js
 # Pinned independently of signet's own buf.gen.yaml and the other language
 # clients in this repo. Update to a specific :vX.Y.Z label once tagged
 # releases exist.
