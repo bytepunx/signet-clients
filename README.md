@@ -9,7 +9,7 @@ the signet server or any other client currently uses.
 
 | Language   | Path          | Status                                                          |
 |------------|---------------|------------------------------------------------------------------|
-| Go         | [`go/`](go)             | Implemented — connection helpers for both SPIFFE mTLS (workload) and bearer-token (admin) access |
+| Go         | [`go/`](go)             | Implemented — connection helpers for both SPIFFE mTLS (workload) and bearer-token (admin) access, plus in-memory coordinated-restart support (`WatchBundle`/`AcquireLock`/`WaitForRestart`) |
 | Python     | [`python/`](python)         | Scaffolded — codegen wired up, wrapper layer pending |
 | TypeScript | [`typescript/`](typescript)     | Scaffolded — codegen wired up, wrapper layer pending |
 | Rust       | [`rust/`](rust)           | Scaffolded — codegen wired up, wrapper layer pending |
@@ -31,6 +31,9 @@ client.
    plugin(s) appropriate for that language (see existing directories for examples).
 3. Run `buf generate` to produce stubs, then add a thin idiomatic connection layer on top
    — see `go/client.go` for the pattern (a SPIFFE-mTLS dial helper for workload access, a
-   bearer-token dial helper for admin access; no RPC method wrapping beyond that).
+   bearer-token dial helper for admin access; no RPC method wrapping beyond that). See
+   `go/restart.go` for the coordinated-restart pattern (watch for changes, acquire the
+   distributed restart lock, let the caller decide when to exit) — a good candidate to
+   port to each language once its connection layer exists.
 4. Wire up CI (lint/test/build for that language) and a release-please package entry in
    `release-please-config.json`.
