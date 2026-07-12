@@ -23,8 +23,10 @@ buf generate
 ```
 
 Pulls `signet/v1` and `admin/v1` from `buf.build/bytepunx/signet-proto` and regenerates
-`src/gen` (gitignored — regenerate locally; CI regenerates fresh too). Edit the module
-reference in `buf.gen.yaml` to pin a different schema version.
+`src/gen`, which is committed (matching the [Go client](../go)'s `gen/` — this package now
+has real code depending on it, so it's tracked rather than gitignored like the
+not-yet-implemented clients). Edit the module reference in `buf.gen.yaml` to pin a
+different schema version, then commit the regenerated `src/gen`.
 
 ## Usage
 
