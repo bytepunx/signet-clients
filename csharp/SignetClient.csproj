@@ -15,8 +15,8 @@
     <PackageReference Include="Google.Protobuf" Version="3.27.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Include="gen/**/*.cs" />
-  </ItemGroup>
+  <!-- gen/**/*.cs is already picked up by the SDK's default Compile glob;
+       an explicit Include here duplicates it and fails the build
+       (NETSDK1022). -->
 
 </Project>
