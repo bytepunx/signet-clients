@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.0.0",
-    "@grpc/grpc-js": "^1.10.0"
+    "@grpc/grpc-js": "^1.10.0",
+    "spiffe": "^0.5.1"
   },
   "devDependencies": {
     "typescript": "^5.5.0"
