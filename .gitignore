@@ -4,9 +4,6 @@
 # and commit the generated output, matching go/gen.
 python/src/signet/
 python/src/admin/
-typescript/src/gen/
-typescript/dist/
-typescript/node_modules/
 rust/src/gen/
 rust/target/
 # Library crate — consumers resolve their own dependency tree; regenerated
@@ -15,3 +12,9 @@ rust/Cargo.lock
 csharp/gen/
 csharp/bin/
 csharp/obj/
+# TypeScript: src/gen is committed (matching go/gen) now that the wrapper
+# layer is implemented. dist/ (build output) and node_modules/ (installed
+# dependencies) are never generated-schema-stub content, so they stay
+# ignored permanently regardless of implementation status.
+typescript/dist/
+typescript/node_modules/
