@@ -15,3 +15,5 @@ rust/Cargo.lock
 csharp/gen/
 csharp/bin/
 csharp/obj/
+csharp/SignetClient.Tests/bin/
+csharp/SignetClient.Tests/obj/
