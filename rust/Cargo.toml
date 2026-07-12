@@ -5,9 +5,48 @@ edition = "2021"
 description = "Rust client for signet, generated from bytepunx/signet-proto"
 license = "Apache-2.0"
 
+[features]
+# Enables `dial_workload`, which authenticates to signet's workload-facing
+# SecretsService listener via SPIFFE mTLS. Off by default so that callers who
+# only need `dial_admin` and/or the restart-coordination primitives
+# (`watch_bundle`, `acquire_lock`, `wait_for_restart`) don't pay for the
+# extra `spiffe`/`spiffe-rustls`/`rustls` dependency tree. See README.md for
+# details and known gaps.
+spiffe-workload = [
+    "dep:spiffe",
+    "dep:spiffe-rustls",
+    "dep:rustls",
+    "dep:tokio-rustls",
+    "dep:hyper-util",
+]
+
 [dependencies]
-tonic = "0.14"
+tonic = { version = "0.14", features = ["tls-ring"] }
 tonic-prost = "0.14"
 prost = "0.14"
 prost-types = "0.14"
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
+tokio-stream = "0.1"
+tokio-util = "0.7"
+thiserror = "2"
+# Used only to validate a caller-supplied CA PEM bundle up front, with a
+# specific parse error, before ever attempting a connection.
+rustls-pemfile = "2"
+
+# --- optional: `spiffe-workload` feature ---
+spiffe = { version = "0.16", features = ["x509-source", "workload-api-x509", "transport-grpc"], optional = true }
+spiffe-rustls = { version = "0.7", optional = true }
+rustls = { version = "0.23", optional = true }
+tokio-rustls = { version = "0.26", optional = true }
+hyper-util = { version = "0.1", features = ["client", "client-legacy", "tokio"], optional = true }
+
+[[example]]
+name = "getsecret"
+required-features = ["spiffe-workload"]
+
+[[example]]
+name = "restart_on_change"
+required-features = ["spiffe-workload"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
