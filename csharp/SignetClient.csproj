@@ -11,9 +11,36 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.Net.Client" Version="2.63.0" />
-    <PackageReference Include="Google.Protobuf" Version="3.27.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.32.1" />
+    <!-- Third-party SPIFFE Workload API client (github.com/vurhanau/csharp-spiffe).
+         Not an official spiffe.io project (unlike go-spiffe, which go/client.go
+         depends on) — single maintainer, pre-1.0 (0.0.x), ~12 GitHub stars as of
+         2026-07. It is, however, actively maintained (commits within the last
+         month) and its API (X509Source, Workload API client, AuthorizeMemberOf)
+         maps cleanly onto go-spiffe's. See README.md's SPIFFE section for the
+         full honesty writeup on this gap. -->
+    <PackageReference Include="Spiffe" Version="0.0.3" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- Exposes internal test seams (ILockStream/IWatchStream fakes drive the state machines
+         directly, without a live network connection — see SignetClient.Tests). -->
+    <InternalsVisibleTo Include="SignetClient.Tests" />
+  </ItemGroup>
+
+  <!-- SignetClient.Tests lives in a subdirectory of this project, so the SDK's default
+       "**/*.cs" compile glob would otherwise also pull its files (and its xunit-only usings)
+       into this project. Exclude it explicitly — this is a Remove, not a duplicate Include, so
+       it doesn't hit the NETSDK1022 trap the gen/ comment above warns about. -->
+  <ItemGroup>
+    <Compile Remove="SignetClient.Tests/**/*.cs" />
+    <Content Remove="SignetClient.Tests/**" />
+    <None Remove="SignetClient.Tests/**" />
+    <EmbeddedResource Remove="SignetClient.Tests/**" />
+  </ItemGroup>
+
+
 
   <!-- gen/**/*.cs is already picked up by the SDK's default Compile glob;
        an explicit Include here duplicates it and fails the build
