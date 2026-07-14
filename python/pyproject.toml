@@ -8,10 +8,18 @@ license = { text = "Apache-2.0" }
 dependencies = [
     "grpcio>=1.66",
     "protobuf>=5.27",
+    # Used to validate/parse CA bundles for DialAdmin with a clear error
+    # message instead of a raw grpc/OpenSSL failure at handshake time.
+    "cryptography>=42",
 ]
 
 [project.optional-dependencies]
 dev = ["grpcio-tools>=1.66", "pytest>=8.0"]
+# Only needed for dial_workload's SPIFFE mTLS support (see README's SPIFFE
+# section). Everything else (dial_admin, watch_bundle, acquire_lock) has no
+# dependency on this extra and works against any grpc.Channel the caller
+# supplies.
+workload = ["spiffe>=0.3.0"]
 
 [build-system]
 requires = ["hatchling"]
@@ -21,4 +29,9 @@ build-backend = "hatchling.build"
 # buf generate lays output out mirroring the proto package path:
 # src/signet/v1/*_pb2.py(i), src/admin/v1/*_pb2.py(i). No __init__.py files
 # are generated or needed — these are PEP 420 implicit namespace packages.
-packages = ["src/signet", "src/admin"]
+# src/signet_client is the hand-written wrapper layer (this package's actual
+# source), a regular (non-namespace) package.
+packages = ["src/signet", "src/admin", "src/signet_client"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
