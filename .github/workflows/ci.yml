@@ -70,14 +70,11 @@ jobs:
       - name: buf generate
         run: buf generate
 
-      - name: Install package
-        run: pip install .
+      - name: Install package (dev + workload extras)
+        run: pip install -e ".[dev,workload]"
 
-      # No wrapper code exists yet (see README status table) — this at
-      # least proves the generated stubs actually import as the package
-      # pyproject.toml claims to ship, not just that buf generate exits 0.
-      - name: Verify generated modules import
-        run: python -c "import signet.v1.secrets_pb2; import admin.v1.admin_pb2"
+      - name: pytest
+        run: pytest
 
   typescript:
     name: TypeScript client
@@ -103,11 +100,22 @@ jobs:
       - name: buf generate
         run: buf generate
 
+      - name: Fail if src/gen has uncommitted changes
+        run: |
+          if ! git diff --quiet src/gen/; then
+            echo "::error::typescript/src/gen is out of sync with the pinned signet-proto module. Run 'buf generate' in typescript/ and commit the result."
+            git diff src/gen/
+            exit 1
+          fi
+
       - name: npm ci
         run: npm ci
 
       - name: Build
         run: npm run build
+
+      - name: Test
+        run: npm test
 
   rust:
     name: Rust client
@@ -130,6 +138,9 @@ jobs:
 
       - name: cargo build
         run: cargo build
+
+      - name: cargo test
+        run: cargo test --features spiffe-workload
 
   csharp:
     name: C# client
@@ -155,3 +166,6 @@ jobs:
 
       - name: dotnet build
         run: dotnet build
+
+      - name: dotnet test
+        run: dotnet test
