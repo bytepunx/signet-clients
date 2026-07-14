@@ -93,6 +93,10 @@ See `examples/restart-on-change` for a complete runnable example, and
 [signet's restart-lock docs](https://github.com/bytepunx/signet/blob/main/docs/restart-lock.md)
 for the underlying protocol.
 
+See also `examples/echo`, a container-oriented, env-var-configured smoke-test fixture (used by
+the [signet-smoke-test](https://github.com/bytepunx/signet-smoke-test) harness) that combines
+both of the above — it is **test-only** and deliberately prints secrets to stdout.
+
 ## Regenerating stubs
 
 ```
