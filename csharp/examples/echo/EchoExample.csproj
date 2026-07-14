@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    TEST-ONLY BUILD — DO NOT RUN IN PRODUCTION.
+
+    This is a minimal console program for the signet-smoke-test Docker/Kubernetes harness
+    (bytepunx/signet-smoke-test): it fetches a service bundle over a real SPIFFE mTLS
+    connection, prints it (secrets included, base64-decoded) to stdout for log-based
+    verification, then blocks on the coordinated-restart flow and exits 0 once it fires. See
+    Program.cs for the full sequence and ../../README.md's "Coordinated restarts" section for
+    the library primitives this composes.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Signet.Examples.Echo</RootNamespace>
+    <AssemblyName>echo</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../SignetClient.csproj" />
+  </ItemGroup>
+
+</Project>

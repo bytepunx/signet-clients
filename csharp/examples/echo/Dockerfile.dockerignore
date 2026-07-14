@@ -1,0 +1,9 @@
+# Applies only to examples/echo/Dockerfile (Docker's per-Dockerfile ignore-file convention),
+# even though the build context root is csharp/. Keeps host-local build artifacts and version
+# control metadata out of the build context — the Dockerfile COPYs its inputs explicitly, so
+# none of this is actually needed, but excluding it keeps `docker build`'s context-upload step
+# fast regardless of what's lying around in a given checkout.
+**/bin/
+**/obj/
+gen/
+.git/

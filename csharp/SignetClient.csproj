@@ -40,6 +40,17 @@
     <EmbeddedResource Remove="SignetClient.Tests/**" />
   </ItemGroup>
 
+  <!-- Same NETSDK1022-class conflict as SignetClient.Tests above: examples/echo is its own
+       project (EchoExample.csproj, a top-level-statements console app referencing this one),
+       and the SDK's default "**/*.cs" glob would otherwise also pull its Program.cs into this
+       library project. -->
+  <ItemGroup>
+    <Compile Remove="examples/**/*.cs" />
+    <Content Remove="examples/**" />
+    <None Remove="examples/**" />
+    <EmbeddedResource Remove="examples/**" />
+  </ItemGroup>
+
 
 
   <!-- gen/**/*.cs is already picked up by the SDK's default Compile glob;
