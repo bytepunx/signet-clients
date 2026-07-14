@@ -48,5 +48,14 @@ required-features = ["spiffe-workload"]
 name = "restart_on_change"
 required-features = ["spiffe-workload"]
 
+[[example]]
+name = "echo"
+required-features = ["spiffe-workload"]
+
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
+# Used only by the `echo` example, to render a fetched bundle (with secrets
+# base64-decoded) as a single JSON log line for the Docker/K8s smoke-test
+# harness's log-based verification.
+serde_json = "1"
+base64 = "0.22"
