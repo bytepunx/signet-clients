@@ -191,6 +191,10 @@ process-host client, which is why the Go and TypeScript clients both call it out
 `AbortSignal` — as their cancellation mechanism (the idiomatic Node/web-platform equivalent
 of Go's `context.Context`).
 
+See `examples/echo/` for a minimal end-to-end program (env-var configured, built as a
+Docker image) used by the [signet-smoke-test](https://github.com/bytepunx/signet-smoke-test)
+harness to verify this client against a real signet + SPIRE deployment.
+
 ## Testing
 
 ```
