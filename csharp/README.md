@@ -27,7 +27,10 @@ dotnet test        # runs the full test suite
 ```
 
 Both commands can also be pointed at a specific project, e.g.
-`dotnet test SignetClient.Tests/SignetClient.Tests.csproj`. Requires the .NET 8 SDK; if `dotnet`
+`dotnet test SignetClient.Tests/SignetClient.Tests.csproj`. `examples/echo` is a minimal,
+environment-variable-configured console app used by the `signet-smoke-test` Docker/Kubernetes
+harness to exercise this library against a real signet + SPIRE cluster; it builds as part of
+the same `dotnet build` above. Requires the .NET 8 SDK; if `dotnet`
 isn't already on `PATH`, install it with the official script:
 
 ```

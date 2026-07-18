@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SignetClient", "SignetClien
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SignetClient.Tests", "SignetClient.Tests\SignetClient.Tests.csproj", "{C68CA0BA-ED02-4EC3-8574-BF8AAD64C756}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EchoExample", "examples\echo\EchoExample.csproj", "{D68C9685-BDB2-4276-9CC6-690D8652BA7D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{C68CA0BA-ED02-4EC3-8574-BF8AAD64C756}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C68CA0BA-ED02-4EC3-8574-BF8AAD64C756}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C68CA0BA-ED02-4EC3-8574-BF8AAD64C756}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D68C9685-BDB2-4276-9CC6-690D8652BA7D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D68C9685-BDB2-4276-9CC6-690D8652BA7D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D68C9685-BDB2-4276-9CC6-690D8652BA7D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D68C9685-BDB2-4276-9CC6-690D8652BA7D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
