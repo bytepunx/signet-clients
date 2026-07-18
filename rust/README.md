@@ -64,7 +64,10 @@ let resp = client.get_secret(signet_client::signet::v1::GetSecretRequest {
 
 See `examples/getsecret.rs` and `examples/restart_on_change.rs` for complete runnable
 examples (`cargo run --example getsecret --features spiffe-workload -- --help`-style
-usage is documented in each file's header comment).
+usage is documented in each file's header comment). `examples/echo.rs` (env-var-driven, no
+CLI flags) is a container-native smoke-test fixture for the `bytepunx/signet-smoke-test`
+Docker/Kubernetes harness — see `examples/echo/Dockerfile` and the header comment in
+`echo.rs` for details; **test-only, do not run in production**.
 
 **Status of the SPIFFE integration and a known gap.** Unlike the Erlang client (which has
 no maintained protobuf/gRPC toolchain at all for its ecosystem — see `../erlang/README.md`
