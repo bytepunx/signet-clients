@@ -10,10 +10,10 @@ the signet server or any other client currently uses.
 | Language   | Path          | Status                                                          |
 |------------|---------------|------------------------------------------------------------------|
 | Go         | [`go/`](go)             | Implemented — connection helpers for both SPIFFE mTLS (workload) and bearer-token (admin) access, plus in-memory coordinated-restart support (`WatchBundle`/`AcquireLock`/`WaitForRestart`) |
-| Python     | [`python/`](python)         | Scaffolded — codegen wired up, wrapper layer pending |
-| TypeScript | [`typescript/`](typescript)     | Scaffolded — codegen wired up, wrapper layer pending |
-| Rust       | [`rust/`](rust)           | Scaffolded — codegen wired up, wrapper layer pending |
-| C#         | [`csharp/`](csharp)         | Scaffolded — codegen wired up, wrapper layer pending |
+| Rust       | [`rust/`](rust)           | Implemented — same shape as Go. SPIFFE support is on equal footing (`rust-spiffe` is mature and well-maintained) |
+| Python     | [`python/`](python)         | Implemented — same shape as Go. SPIFFE workload auth has one narrower gap than Go's: no post-handshake SPIFFE-ID check, only trust-domain-scoped CA validation (see `python/README.md`) |
+| TypeScript | [`typescript/`](typescript)     | Implemented — same shape as Go. SPIFFE support is real but thin (no background SVID rotation — see `typescript/README.md`) |
+| C#         | [`csharp/`](csharp)         | Implemented — same shape as Go. SPIFFE support depends on a single-maintainer, pre-1.0 library (see `csharp/README.md`) |
 | Erlang     | [`erlang/`](erlang)         | Not yet started — no BSR remote plugin for this ecosystem; see its README |
 
 ### Why a separate repo per protocol, not per client
@@ -30,10 +30,14 @@ client.
 2. Add a `buf.gen.yaml` with `inputs: - module: buf.build/bytepunx/signet-proto` and the
    plugin(s) appropriate for that language (see existing directories for examples).
 3. Run `buf generate` to produce stubs, then add a thin idiomatic connection layer on top
-   — see `go/client.go` for the pattern (a SPIFFE-mTLS dial helper for workload access, a
-   bearer-token dial helper for admin access; no RPC method wrapping beyond that). See
-   `go/restart.go` for the coordinated-restart pattern (watch for changes, acquire the
-   distributed restart lock, let the caller decide when to exit) — a good candidate to
-   port to each language once its connection layer exists.
+   — see `go/client.go` (or any of the other four implemented clients) for the pattern (a
+   SPIFFE-mTLS dial helper for workload access, a bearer-token dial helper for admin
+   access; no RPC method wrapping beyond that) and `go/restart.go` for the
+   coordinated-restart pattern (watch for changes, acquire the distributed restart lock,
+   let the caller decide when to exit). Research whether a maintained SPIFFE Workload API
+   client exists for the new language before assuming one does or doesn't — the answer has
+   varied a lot across the five languages implemented so far, from "as mature as Go's" to
+   "no viable option at all." Document whatever gap you find honestly, the way each
+   existing client's README does, rather than silently skipping workload support.
 4. Wire up CI (lint/test/build for that language) and a release-please package entry in
    `release-please-config.json`.
