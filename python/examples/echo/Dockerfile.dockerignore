@@ -1,0 +1,17 @@
+# Applies only to `docker build -f examples/echo/Dockerfile` (BuildKit
+# convention: a <dockerfile>.dockerignore next to the referenced Dockerfile
+# takes precedence over a root .dockerignore). Keeps the build context lean
+# and avoids shadowing the stub packages this build regenerates itself via
+# `buf generate` in its "proto" stage.
+**/__pycache__/
+**/*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+build/
+dist/
+tests/
+src/signet/
+src/admin/
+examples/getsecret/
+examples/restart_on_change/

@@ -185,7 +185,7 @@ duration — not just fire-and-forget heartbeat sends — so `TTL_EXTENDED` acks
 `Lock.expires_at`, and a stream error or server-initiated close while holding the lock
 is detected promptly as lock loss, distinguishable from an intentional `release()`.
 
-See `examples/restart_on_change` for a complete runnable example.
+See `examples/restart_on_change` for a complete runnable example. See also `examples/echo`, a TEST-ONLY, env-var-configured container fixture used by the [signet-smoke-test](https://github.com/bytepunx/signet-smoke-test) harness to verify this client against a live signet + SPIRE cluster.
 
 ## Testing
 
