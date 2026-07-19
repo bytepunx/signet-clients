@@ -24,6 +24,20 @@ committed as a shared artifact. This keeps each client's release cycle, generate
 layout, and idiomatic wrapper API fully independent of both the server and every other
 client.
 
+### Development setup
+
+```
+git config core.hooksPath .githooks
+```
+
+Enables a pre-commit hook that regenerates Go's and TypeScript's proto stubs (the two
+languages with a committed `gen/`/`src/gen/` directory CI enforces) and blocks the commit
+if that output doesn't match what's staged — the same check
+[`ci.yml`](.github/workflows/ci.yml) runs, just before you push instead of after. Requires
+`buf` on `PATH`; the hook prints a warning and no-ops if it's missing rather than blocking
+every commit for contributors who haven't installed it yet, but CI still enforces the
+check either way. Skip once with `git commit --no-verify` if you need to.
+
 ### Adding a new client
 
 1. Add a directory named for the language/ecosystem.

@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Catches proto-stub drift before it reaches CI: regenerates each language's
+# checked-in gen/ output from its pinned bytepunx/signet-proto module (via
+# buf.gen.yaml) and blocks the commit if that differs from what's staged.
+# Mirrors .github/workflows/ci.yml's "Fail if gen/ has uncommitted changes"
+# steps exactly, run locally instead of discovered after a push.
+#
+# Enable with: git config core.hooksPath .githooks
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
+if ! command -v buf >/dev/null 2>&1; then
+  echo "pre-commit: 'buf' not found on PATH — skipping proto-stub drift check." >&2
+  echo "  Install it (https://buf.build/docs/installation) so this check can run;" >&2
+  echo "  CI enforces it even if this hook can't." >&2
+  exit 0
+fi
+
+fail=0
+
+check_language() {
+  local dir="$1" gen_path="$2"
+  echo "pre-commit: buf generate ($dir)..." >&2
+  if ! (cd "$dir" && buf generate) >/tmp/pre-commit-buf-generate-"$dir".log 2>&1; then
+    echo "pre-commit: 'buf generate' failed in $dir/ — see /tmp/pre-commit-buf-generate-$dir.log" >&2
+    fail=1
+    return
+  fi
+  if ! git -C "$dir" diff --quiet -- "$gen_path"; then
+    echo >&2
+    echo "pre-commit: $dir/$gen_path is out of sync with the pinned signet-proto module." >&2
+    echo "  Run 'buf generate' in $dir/ and 'git add $dir/$gen_path', then commit again." >&2
+    git -C "$dir" diff --stat -- "$gen_path" >&2
+    fail=1
+  fi
+}
+
+check_language go gen
+check_language typescript src/gen
+
+if [ "$fail" -ne 0 ]; then
+  echo >&2
+  echo "pre-commit: proto stubs are stale (see above). Commit blocked." >&2
+  echo "  Bypass with 'git commit --no-verify' only if you know what you're doing." >&2
+  exit 1
+fi
+
+echo "pre-commit: proto stubs are in sync." >&2
