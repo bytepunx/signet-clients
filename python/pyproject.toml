@@ -1,6 +1,6 @@
 [project]
 name = "signet-client"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python client for signet, generated from bytepunx/signet-proto"
 readme = "README.md"
 requires-python = ">=3.10"
