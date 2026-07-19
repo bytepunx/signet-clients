@@ -12,6 +12,16 @@ jobs:
   publish:
     name: Build and publish to PyPI
     runs-on: ubuntu-latest
+    permissions:
+      # PyPI Trusted Publishing (see pypa/gh-action-pypi-publish below): this
+      # job exchanges a GitHub OIDC token directly for permission to upload,
+      # so no PYPI_API_TOKEN secret needs to exist at all. The trusted
+      # publisher configured on pypi.org for signet-client must reference
+      # this exact repo (bytepunx/signet-clients), workflow filename
+      # (publish-python.yml), and no GitHub environment restriction (none
+      # was set when the publisher was configured, so this job doesn't
+      # declare one either — the two must match exactly).
+      id-token: write
     defaults:
       run:
         working-directory: python
@@ -42,9 +52,10 @@ jobs:
         run: python -m build
 
       - name: Publish to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          pip install twine
-          twine upload dist/*
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # This action resolves packages-dir relative to the workspace
+          # root, not this job's working-directory default (that only
+          # applies to `run:` steps) — the build step above ran with
+          # working-directory: python, so its output landed in python/dist.
+          packages-dir: python/dist
