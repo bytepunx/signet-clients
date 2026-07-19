@@ -21,6 +21,10 @@
 //!   - `SIGNET_SERVICE` — signet service to fetch
 //!
 //! Optional:
+//!   - `SIGNET_SHARED_NAMESPACE` / `SIGNET_SHARED_SERVICE` — a second
+//!     namespace/service to fetch, e.g. one only reachable via an access
+//!     policy rather than the namespace/service convention. Must be set
+//!     together; if either is missing, the second fetch is skipped.
 //!   - `RESTART_LOCK_TTL_SECONDS` — restart lock TTL; default `30`, and any
 //!     missing/unparseable value falls back to the default
 //!   - `RESTART_DEBOUNCE_SECONDS` — restart debounce; default `5`, same
@@ -92,6 +96,8 @@ struct Config {
     trust_domain: String,
     namespace: String,
     service: String,
+    shared_namespace: Option<String>,
+    shared_service: Option<String>,
     lock_ttl: Duration,
     debounce: Duration,
 }
@@ -114,6 +120,13 @@ fn optional_seconds(name: &str, default: u64) -> Duration {
     Duration::from_secs(secs)
 }
 
+/// Reads an optional env var, treating an unset or blank value as absent.
+fn optional_env(name: &str) -> Option<String> {
+    std::env::var(name)
+        .ok()
+        .filter(|v| !v.trim().is_empty())
+}
+
 fn load_config() -> Result<Config, EchoError> {
     Ok(Config {
         addr: require_env("SIGNET_ADDR")?,
@@ -121,6 +134,8 @@ fn load_config() -> Result<Config, EchoError> {
         socket: require_env("SPIFFE_WORKLOAD_SOCKET")?,
         namespace: require_env("SIGNET_NAMESPACE")?,
         service: require_env("SIGNET_SERVICE")?,
+        shared_namespace: optional_env("SIGNET_SHARED_NAMESPACE"),
+        shared_service: optional_env("SIGNET_SHARED_SERVICE"),
         lock_ttl: optional_seconds("RESTART_LOCK_TTL_SECONDS", DEFAULT_LOCK_TTL_SECONDS),
         debounce: optional_seconds("RESTART_DEBOUNCE_SECONDS", DEFAULT_DEBOUNCE_SECONDS),
     })
@@ -270,6 +285,29 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let bundle = bundle_resp.bundle.as_ref().unwrap_or(&empty);
     let echo_json = bundle_to_echo_json(bundle)?;
     println!("ECHO_BUNDLE: {}", serde_json::to_string(&echo_json)?);
+
+    // Optional second fetch proving cross-namespace access via an admin-
+    // granted policy actually works, not just the namespace/service
+    // convention — most workloads never need this (see signet's
+    // docs/policies.md), but the smoke-test harness sets these two env
+    // vars specifically to exercise that path end to end.
+    if let (Some(shared_namespace), Some(shared_service)) =
+        (&config.shared_namespace, &config.shared_service)
+    {
+        let shared_resp = tokio::select! {
+            res = client.get_service_bundle(GetServiceBundleRequest {
+                namespace: shared_namespace.clone(),
+                service: shared_service.clone(),
+            }) => res?.into_inner(),
+            () = cancel.cancelled() => {
+                eprintln!("cancelled before fetching the shared service bundle");
+                return Ok(());
+            }
+        };
+        let shared_bundle = shared_resp.bundle.as_ref().unwrap_or(&empty);
+        let shared_echo_json = bundle_to_echo_json(shared_bundle)?;
+        println!("ECHO_SHARED_BUNDLE: {}", serde_json::to_string(&shared_echo_json)?);
+    }
 
     // Blocks, potentially indefinitely — expected steady-state until the
     // harness changes this service's bundle and this replica wins the
