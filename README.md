@@ -11,7 +11,7 @@ the signet server or any other client currently uses.
 |------------|---------------|------------------------------------------------------------------|
 | Go         | [`go/`](go)             | Implemented — connection helpers for both SPIFFE mTLS (workload) and bearer-token (admin) access, plus in-memory coordinated-restart support (`WatchBundle`/`AcquireLock`/`WaitForRestart`) |
 | Rust       | [`rust/`](rust)           | Implemented — same shape as Go. SPIFFE support is on equal footing (`rust-spiffe` is mature and well-maintained) |
-| Python     | [`python/`](python)         | Implemented — same shape as Go. SPIFFE workload auth has one narrower gap than Go's: no post-handshake SPIFFE-ID check, only trust-domain-scoped CA validation (see `python/README.md`) |
+| Python     | [`python/`](python)         | Implemented, **except SPIFFE workload mTLS does not work at all** — `grpc-python` has no public API to validate a server certificate that carries only a SPIFFE URI SAN, so `dial_workload` cannot connect to a real signet instance. Confirmed live, not just theorized. Admin/bearer-token access (`dial_admin`) is unaffected. See `python/README.md` and [#14](https://github.com/bytepunx/signet-clients/issues/14) for tracking |
 | TypeScript | [`typescript/`](typescript)     | Implemented — same shape as Go. SPIFFE support is real but thin (no background SVID rotation — see `typescript/README.md`) |
 | C#         | [`csharp/`](csharp)         | Implemented — same shape as Go. SPIFFE support depends on a single-maintainer, pre-1.0 library (see `csharp/README.md`) |
 | Erlang     | [`erlang/`](erlang)         | Not yet started — no BSR remote plugin for this ecosystem; see its README |
