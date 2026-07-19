@@ -88,43 +88,44 @@ See `examples/getsecret` for a complete runnable example.
 
 ### SPIFFE support
 
-**Status: implemented**, using [`spiffe`](https://pypi.org/project/spiffe/)
-(source: [HewlettPackard/py-spiffe](https://github.com/HewlettPackard/py-spiffe)) — the
+**Status: `dial_workload` does not work against a real signet server.** This is a hard
+upstream limitation, confirmed live, not a bug in this client's code — see
+[bytepunx/signet-clients#14](https://github.com/bytepunx/signet-clients/issues/14) for
+the full writeup and tracking.
+
+SVID/trust-bundle fetching uses [`spiffe`](https://pypi.org/project/spiffe/) (source:
+[HewlettPackard/py-spiffe](https://github.com/HewlettPackard/py-spiffe)) — the
 actively-maintained Python SPIFFE Workload API client. This was verified, not assumed,
 while building this module: the package everyone calls "pyspiffe" in conversation is
 actually published on PyPI as `spiffe` (`pyspiffe` itself is unclaimed/404), release
 history runs through v0.3.0, and the GitHub repo had commits within the week this
 client was built. It's a companion, not a fork, of `go-spiffe` — same SPIFFE org
-ecosystem, HPE-maintained.
+ecosystem, HPE-maintained. That part works fine.
 
-That said, there's a real, deliberate gap versus the Go client:
+The problem is downstream of that, at the TLS layer: signet's workload listener
+presents an X.509 certificate with **only a SPIFFE URI SAN** — no DNS or IP SAN, which
+is normal and expected for a SPIFFE X.509-SVID. `grpc-python`'s public API
+(`grpc.secure_channel` / `grpc.ssl_channel_credentials`) performs a default hostname
+verification check that only ever examines DNS/IP SAN entries, so it rejects *every*
+such certificate outright with `UNAUTHENTICATED: Hostname Verification Check failed`,
+regardless of whether the chain validates. This was confirmed empirically against a
+live signetd + SPIRE cluster: `grpc.ssl_target_name_override` — the usual escape hatch
+for a mismatched hostname — has **zero effect** here, because there's no DNS/IP SAN of
+any kind for an override to match against. `grpc-python` has never shipped a public
+certificate-verifier hook that would let a caller substitute SPIFFE-ID-based
+verification for the default check; this is a long-standing, unresolved gap in
+`grpc-python` itself, tracked upstream at
+[grpc/grpc#10701](https://github.com/grpc/grpc/issues/10701) (opened 2017, closed
+stale, never resolved).
 
-Go's `DialWorkload` uses `go-spiffe`'s `tlsconfig.AuthorizeMemberOf`, which performs
-**two** checks on every connection: (1) the server's certificate chain validates
-against the trust bundle, and (2) the server's leaf certificate's SPIFFE ID (from its
-URI SAN) is itself a member of the expected trust domain — a callback that runs
-*after* the TLS handshake, inspecting the peer certificate directly.
+This supersedes what used to be documented here as a narrower gap ("no post-handshake
+SPIFFE-ID check beyond trust-domain-scoped CA validation, matters only under
+federation") — that description assumed the connection succeeds at all, which it does
+not. `dial_admin` (bearer-token access) is unaffected, since it doesn't use SPIFFE mTLS.
 
-`grpc-python`'s public API (`grpc.secure_channel` / `grpc.ssl_channel_credentials`) has
-no hook for check (2) — there is no supported way to inspect the server's peer
-certificate post-handshake before the first RPC completes. This client can and does
-implement check (1): it fetches the X.509 CA bundle scoped specifically to the
-requested trust domain (`X509BundleSet.get_bundle_for_trust_domain`) and uses *only*
-that bundle as the channel's root of trust, so any server presenting a chain that
-doesn't validate against that trust domain's own CA is rejected at the TLS layer.
-
-In practice, for the common case (one CA hierarchy per trust domain, no federation),
-this is equivalent to Go's full `AuthorizeMemberOf` check — a trust domain's CA only
-ever signs SVIDs for that trust domain, so chain validation already implies SPIFFE ID
-membership. The gap only matters under **federation**, where a single CA might be
-trusted by multiple trust domains; in that scenario, this client cannot distinguish "a
-member of trust domain A" from "a member of trust domain B, but trusted via a shared
-CA" the way Go's client can. If your deployment federates trust domains behind a
-shared CA and needs that level of isolation, treat this as a known limitation —
-patches implementing a manual post-connection SPIFFE ID check (there are ways to do
-this by dropping to `cryptography`-level socket inspection outside of `grpc`'s
-abstraction, at the cost of losing `grpc`'s connection pooling/retry machinery) are
-welcome.
+See [#14](https://github.com/bytepunx/signet-clients/issues/14) for what's being
+explored (including whether this is worth contributing upstream to `grpc-python`,
+which is Apache-2.0 OSS) and to track resolution.
 
 ### Coordinated restarts (no process host, no environment injection)
 
@@ -185,7 +186,7 @@ duration — not just fire-and-forget heartbeat sends — so `TTL_EXTENDED` acks
 `Lock.expires_at`, and a stream error or server-initiated close while holding the lock
 is detected promptly as lock loss, distinguishable from an intentional `release()`.
 
-See `examples/restart_on_change` for a complete runnable example. See also `examples/echo`, a TEST-ONLY, env-var-configured container fixture used by the [signet-smoke-test](https://github.com/bytepunx/signet-smoke-test) harness to verify this client against a live signet + SPIRE cluster.
+See `examples/restart_on_change` for a complete runnable example. See also `examples/echo`, a TEST-ONLY, env-var-configured container fixture for verifying this client against a live signet + SPIRE cluster — currently **not** deployed by the [signet-smoke-test](https://github.com/bytepunx/signet-smoke-test) harness, since the SPIFFE workload mTLS gap above means it can't connect anyway; see that repo's README for the corresponding TODO.
 
 ## Testing
 
