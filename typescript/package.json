@@ -1,6 +1,6 @@
 {
   "name": "@bytepunx/signet-client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "TypeScript/Node client for signet, generated from bytepunx/signet-proto",
   "license": "Apache-2.0",
   "type": "module",
@@ -12,7 +12,9 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p examples/echo/tsconfig.json",
     "test": "node --test dist/**/*.test.js"
