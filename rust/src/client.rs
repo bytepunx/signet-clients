@@ -344,8 +344,15 @@ mod workload {
             server_name,
         };
 
+        // "http://", not "https://": SpiffeConnector performs the TLS
+        // handshake itself (see its Service::call impl above) and hands
+        // tonic an already-secured stream. An "https://" endpoint URI here
+        // would make tonic expect its own .tls_config() to be set and it
+        // would reject the connection with HttpsUriWithoutTlsSupport before
+        // ever invoking the connector — the scheme only selects tonic's own
+        // request routing/validation, not what happens on the wire.
         let endpoint =
-            Endpoint::from_shared(format!("https://{addr}")).map_err(|source| {
+            Endpoint::from_shared(format!("http://{addr}")).map_err(|source| {
                 ClientError::InvalidEndpoint {
                     addr: addr.clone(),
                     source,
