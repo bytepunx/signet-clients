@@ -27,6 +27,9 @@ const (
 	AdminService_ListKEKs_FullMethodName        = "/admin.v1.AdminService/ListKEKs"
 	AdminService_PruneKEK_FullMethodName        = "/admin.v1.AdminService/PruneKEK"
 	AdminService_RotateMasterKey_FullMethodName = "/admin.v1.AdminService/RotateMasterKey"
+	AdminService_CreatePolicy_FullMethodName    = "/admin.v1.AdminService/CreatePolicy"
+	AdminService_ListPolicies_FullMethodName    = "/admin.v1.AdminService/ListPolicies"
+	AdminService_DeletePolicy_FullMethodName    = "/admin.v1.AdminService/DeletePolicy"
 )
 
 // AdminServiceClient is the client API for AdminService service.
@@ -50,6 +53,14 @@ type AdminServiceClient interface {
 	// for redistributing the new key material to keyholders (Shamir) or
 	// updating the Kubernetes Secret (cluster-native auto-unseal) afterward.
 	RotateMasterKey(ctx context.Context, in *RotateMasterKeyRequest, opts ...grpc.CallOption) (*RotateMasterKeyResponse, error)
+	// Access policy management. Most workloads never need an explicit policy —
+	// see the convention-first model in docs/policies.md: a caller whose SPIFFE
+	// ID encodes ns/<namespace>/sa/<service> matching a secret's own
+	// namespace/service is granted access automatically. These RPCs are only
+	// for cross-namespace/cross-service or wildcard grants.
+	CreatePolicy(ctx context.Context, in *CreatePolicyRequest, opts ...grpc.CallOption) (*CreatePolicyResponse, error)
+	ListPolicies(ctx context.Context, in *ListPoliciesRequest, opts ...grpc.CallOption) (*ListPoliciesResponse, error)
+	DeletePolicy(ctx context.Context, in *DeletePolicyRequest, opts ...grpc.CallOption) (*DeletePolicyResponse, error)
 }
 
 type adminServiceClient struct {
@@ -140,6 +151,36 @@ func (c *adminServiceClient) RotateMasterKey(ctx context.Context, in *RotateMast
 	return out, nil
 }
 
+func (c *adminServiceClient) CreatePolicy(ctx context.Context, in *CreatePolicyRequest, opts ...grpc.CallOption) (*CreatePolicyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreatePolicyResponse)
+	err := c.cc.Invoke(ctx, AdminService_CreatePolicy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) ListPolicies(ctx context.Context, in *ListPoliciesRequest, opts ...grpc.CallOption) (*ListPoliciesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPoliciesResponse)
+	err := c.cc.Invoke(ctx, AdminService_ListPolicies_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) DeletePolicy(ctx context.Context, in *DeletePolicyRequest, opts ...grpc.CallOption) (*DeletePolicyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeletePolicyResponse)
+	err := c.cc.Invoke(ctx, AdminService_DeletePolicy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AdminServiceServer is the server API for AdminService service.
 // All implementations must embed UnimplementedAdminServiceServer
 // for forward compatibility.
@@ -161,6 +202,14 @@ type AdminServiceServer interface {
 	// for redistributing the new key material to keyholders (Shamir) or
 	// updating the Kubernetes Secret (cluster-native auto-unseal) afterward.
 	RotateMasterKey(context.Context, *RotateMasterKeyRequest) (*RotateMasterKeyResponse, error)
+	// Access policy management. Most workloads never need an explicit policy —
+	// see the convention-first model in docs/policies.md: a caller whose SPIFFE
+	// ID encodes ns/<namespace>/sa/<service> matching a secret's own
+	// namespace/service is granted access automatically. These RPCs are only
+	// for cross-namespace/cross-service or wildcard grants.
+	CreatePolicy(context.Context, *CreatePolicyRequest) (*CreatePolicyResponse, error)
+	ListPolicies(context.Context, *ListPoliciesRequest) (*ListPoliciesResponse, error)
+	DeletePolicy(context.Context, *DeletePolicyRequest) (*DeletePolicyResponse, error)
 	mustEmbedUnimplementedAdminServiceServer()
 }
 
@@ -194,6 +243,15 @@ func (UnimplementedAdminServiceServer) PruneKEK(context.Context, *PruneKEKReques
 }
 func (UnimplementedAdminServiceServer) RotateMasterKey(context.Context, *RotateMasterKeyRequest) (*RotateMasterKeyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RotateMasterKey not implemented")
+}
+func (UnimplementedAdminServiceServer) CreatePolicy(context.Context, *CreatePolicyRequest) (*CreatePolicyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreatePolicy not implemented")
+}
+func (UnimplementedAdminServiceServer) ListPolicies(context.Context, *ListPoliciesRequest) (*ListPoliciesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPolicies not implemented")
+}
+func (UnimplementedAdminServiceServer) DeletePolicy(context.Context, *DeletePolicyRequest) (*DeletePolicyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeletePolicy not implemented")
 }
 func (UnimplementedAdminServiceServer) mustEmbedUnimplementedAdminServiceServer() {}
 func (UnimplementedAdminServiceServer) testEmbeddedByValue()                      {}
@@ -360,6 +418,60 @@ func _AdminService_RotateMasterKey_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AdminService_CreatePolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePolicyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).CreatePolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_CreatePolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).CreatePolicy(ctx, req.(*CreatePolicyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_ListPolicies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPoliciesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).ListPolicies(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_ListPolicies_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).ListPolicies(ctx, req.(*ListPoliciesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_DeletePolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeletePolicyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).DeletePolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_DeletePolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).DeletePolicy(ctx, req.(*DeletePolicyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AdminService_ServiceDesc is the grpc.ServiceDesc for AdminService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -398,6 +510,18 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RotateMasterKey",
 			Handler:    _AdminService_RotateMasterKey_Handler,
+		},
+		{
+			MethodName: "CreatePolicy",
+			Handler:    _AdminService_CreatePolicy_Handler,
+		},
+		{
+			MethodName: "ListPolicies",
+			Handler:    _AdminService_ListPolicies_Handler,
+		},
+		{
+			MethodName: "DeletePolicy",
+			Handler:    _AdminService_DeletePolicy_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
