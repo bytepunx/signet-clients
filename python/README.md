@@ -24,6 +24,10 @@ Workload access (`dial_workload`, SPIFFE mTLS) requires an optional extra — se
 pip install signet-client[workload]
 ```
 
+Published to [PyPI](https://pypi.org/project/signet-client/) automatically by
+[`publish-python.yml`](../.github/workflows/publish-python.yml) whenever release-please tags
+a `python-v*` release.
+
 ## Regenerating stubs
 
 ```

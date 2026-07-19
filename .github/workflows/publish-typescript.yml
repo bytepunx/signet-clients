@@ -1,0 +1,52 @@
+name: Publish TypeScript package
+
+on:
+  push:
+    tags:
+      - "typescript-v*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build and publish to npm
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Set up buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: buf generate
+        run: buf generate
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Publish to npm
+        # @bytepunx/signet-client is a scoped package; scoped packages
+        # default to private on npm, so --access public is required or the
+        # publish is rejected outright.
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,0 +1,50 @@
+name: Publish C# package
+
+on:
+  push:
+    tags:
+      - "csharp-v*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build, test, and publish to NuGet
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: csharp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Set up buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: buf generate
+        run: buf generate
+
+      - name: dotnet build
+        run: dotnet build
+
+      - name: dotnet test
+        run: dotnet test
+
+      - name: dotnet pack
+        # Packs only the library itself, not SignetClient.Tests or the
+        # echo example — SignetClient.sln also contains both of those, and
+        # `dotnet pack` on the whole solution would try (and fail) to
+        # produce a NuGet package for the non-packable test/example projects.
+        run: dotnet pack SignetClient.csproj --configuration Release --output ./nupkg
+
+      - name: dotnet nuget push
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: dotnet nuget push "./nupkg/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json

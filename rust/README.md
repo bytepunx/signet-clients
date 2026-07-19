@@ -7,11 +7,15 @@ with the same connection-helper and coordinated-restart layer as the
 [Go client](../go) — see that package's `client.go`/`restart.go`/`README.md` for the
 reference design this crate mirrors (idiomatically, not mechanically).
 
-## Install (once published)
+## Install
 
 ```
 cargo add signet-client
 ```
+
+Published to [crates.io](https://crates.io/crates/signet-client) automatically by
+[`publish-rust.yml`](../.github/workflows/publish-rust.yml) whenever release-please tags a
+`rust-v*` release.
 
 ## Regenerating stubs
 
