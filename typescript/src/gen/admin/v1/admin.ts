@@ -157,6 +157,67 @@ export interface RotateMasterKeyResponse {
   keksRewrapped: number;
 }
 
+export interface CreatePolicyRequest {
+  /**
+   * spiffe_id is a glob matched against the caller's SPIFFE ID. '*' matches
+   * any single path segment (does not cross '/'); e.g.
+   * "spiffe://cluster.local/ns/* /sa/echo" matches the "echo" service account
+   * in any namespace. To grant access to every workload in the trust domain,
+   * use "spiffe://cluster.local/ns/* /sa/*" — a bare "**" is NOT supported
+   * (this is Go's path.Match, not a shell/gitignore-style glob engine).
+   */
+  spiffeId: string;
+  /** namespace is the target secret's namespace, or "*" for any namespace. */
+  namespace: string;
+  /**
+   * service is the target secret's service. Combined with secret_name into
+   * a "namespace/service/secret_name" pattern evaluated the same way.
+   */
+  service: string;
+  /**
+   * secret_name is a glob for the secret name within namespace/service.
+   * Defaults to "*" (every secret in that namespace/service) if empty.
+   */
+  secretName: string;
+  /**
+   * permissions granted, e.g. ["read"]. "*" grants every permission.
+   * Defaults to ["read"] if empty.
+   */
+  permissions: string[];
+}
+
+export interface CreatePolicyResponse {
+  id: string;
+}
+
+export interface ListPoliciesRequest {
+}
+
+export interface PolicyInfo {
+  id: string;
+  spiffeId: string;
+  namespace: string;
+  /**
+   * pattern is the full "namespace/service/secret_name"-shaped glob as
+   * stored — service and secret_name are not tracked as separate fields.
+   */
+  pattern: string;
+  permissions: string[];
+  createdAt: string;
+}
+
+export interface ListPoliciesResponse {
+  policies: PolicyInfo[];
+}
+
+export interface DeletePolicyRequest {
+  id: string;
+}
+
+export interface DeletePolicyResponse {
+  message: string;
+}
+
 export interface GetSOPSPublicKeyRequest {
 }
 
@@ -1546,6 +1607,569 @@ export const RotateMasterKeyResponse: MessageFns<RotateMasterKeyResponse> = {
     const message = createBaseRotateMasterKeyResponse();
     message.message = object.message ?? "";
     message.keksRewrapped = object.keksRewrapped ?? 0;
+    return message;
+  },
+};
+
+function createBaseCreatePolicyRequest(): CreatePolicyRequest {
+  return { spiffeId: "", namespace: "", service: "", secretName: "", permissions: [] };
+}
+
+export const CreatePolicyRequest: MessageFns<CreatePolicyRequest> = {
+  encode(message: CreatePolicyRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.spiffeId !== "") {
+      writer.uint32(10).string(message.spiffeId);
+    }
+    if (message.namespace !== "") {
+      writer.uint32(18).string(message.namespace);
+    }
+    if (message.service !== "") {
+      writer.uint32(26).string(message.service);
+    }
+    if (message.secretName !== "") {
+      writer.uint32(34).string(message.secretName);
+    }
+    for (const v of message.permissions) {
+      writer.uint32(42).string(v!);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CreatePolicyRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseCreatePolicyRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.spiffeId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.namespace = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.service = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.secretName = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.permissions.push(reader.string());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CreatePolicyRequest {
+    return {
+      spiffeId: isSet(object.spiffeId)
+        ? globalThis.String(object.spiffeId)
+        : isSet(object.spiffe_id)
+        ? globalThis.String(object.spiffe_id)
+        : "",
+      namespace: isSet(object.namespace) ? globalThis.String(object.namespace) : "",
+      service: isSet(object.service) ? globalThis.String(object.service) : "",
+      secretName: isSet(object.secretName)
+        ? globalThis.String(object.secretName)
+        : isSet(object.secret_name)
+        ? globalThis.String(object.secret_name)
+        : "",
+      permissions: globalThis.Array.isArray(object?.permissions)
+        ? object.permissions.map((e: any) => globalThis.String(e))
+        : [],
+    };
+  },
+
+  toJSON(message: CreatePolicyRequest): unknown {
+    const obj: any = {};
+    if (message.spiffeId !== "") {
+      obj.spiffeId = message.spiffeId;
+    }
+    if (message.namespace !== "") {
+      obj.namespace = message.namespace;
+    }
+    if (message.service !== "") {
+      obj.service = message.service;
+    }
+    if (message.secretName !== "") {
+      obj.secretName = message.secretName;
+    }
+    if (message.permissions?.length) {
+      obj.permissions = message.permissions;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<CreatePolicyRequest>): CreatePolicyRequest {
+    return CreatePolicyRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CreatePolicyRequest>): CreatePolicyRequest {
+    const message = createBaseCreatePolicyRequest();
+    message.spiffeId = object.spiffeId ?? "";
+    message.namespace = object.namespace ?? "";
+    message.service = object.service ?? "";
+    message.secretName = object.secretName ?? "";
+    message.permissions = object.permissions?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseCreatePolicyResponse(): CreatePolicyResponse {
+  return { id: "" };
+}
+
+export const CreatePolicyResponse: MessageFns<CreatePolicyResponse> = {
+  encode(message: CreatePolicyResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.id !== "") {
+      writer.uint32(10).string(message.id);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CreatePolicyResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseCreatePolicyResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.id = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CreatePolicyResponse {
+    return { id: isSet(object.id) ? globalThis.String(object.id) : "" };
+  },
+
+  toJSON(message: CreatePolicyResponse): unknown {
+    const obj: any = {};
+    if (message.id !== "") {
+      obj.id = message.id;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<CreatePolicyResponse>): CreatePolicyResponse {
+    return CreatePolicyResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CreatePolicyResponse>): CreatePolicyResponse {
+    const message = createBaseCreatePolicyResponse();
+    message.id = object.id ?? "";
+    return message;
+  },
+};
+
+function createBaseListPoliciesRequest(): ListPoliciesRequest {
+  return {};
+}
+
+export const ListPoliciesRequest: MessageFns<ListPoliciesRequest> = {
+  encode(_: ListPoliciesRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListPoliciesRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListPoliciesRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): ListPoliciesRequest {
+    return {};
+  },
+
+  toJSON(_: ListPoliciesRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListPoliciesRequest>): ListPoliciesRequest {
+    return ListPoliciesRequest.fromPartial(base ?? {});
+  },
+  fromPartial(_: DeepPartial<ListPoliciesRequest>): ListPoliciesRequest {
+    const message = createBaseListPoliciesRequest();
+    return message;
+  },
+};
+
+function createBasePolicyInfo(): PolicyInfo {
+  return { id: "", spiffeId: "", namespace: "", pattern: "", permissions: [], createdAt: "" };
+}
+
+export const PolicyInfo: MessageFns<PolicyInfo> = {
+  encode(message: PolicyInfo, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.id !== "") {
+      writer.uint32(10).string(message.id);
+    }
+    if (message.spiffeId !== "") {
+      writer.uint32(18).string(message.spiffeId);
+    }
+    if (message.namespace !== "") {
+      writer.uint32(26).string(message.namespace);
+    }
+    if (message.pattern !== "") {
+      writer.uint32(34).string(message.pattern);
+    }
+    for (const v of message.permissions) {
+      writer.uint32(42).string(v!);
+    }
+    if (message.createdAt !== "") {
+      writer.uint32(50).string(message.createdAt);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PolicyInfo {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePolicyInfo();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.id = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.spiffeId = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.namespace = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.pattern = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.permissions.push(reader.string());
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.createdAt = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PolicyInfo {
+    return {
+      id: isSet(object.id) ? globalThis.String(object.id) : "",
+      spiffeId: isSet(object.spiffeId)
+        ? globalThis.String(object.spiffeId)
+        : isSet(object.spiffe_id)
+        ? globalThis.String(object.spiffe_id)
+        : "",
+      namespace: isSet(object.namespace) ? globalThis.String(object.namespace) : "",
+      pattern: isSet(object.pattern) ? globalThis.String(object.pattern) : "",
+      permissions: globalThis.Array.isArray(object?.permissions)
+        ? object.permissions.map((e: any) => globalThis.String(e))
+        : [],
+      createdAt: isSet(object.createdAt)
+        ? globalThis.String(object.createdAt)
+        : isSet(object.created_at)
+        ? globalThis.String(object.created_at)
+        : "",
+    };
+  },
+
+  toJSON(message: PolicyInfo): unknown {
+    const obj: any = {};
+    if (message.id !== "") {
+      obj.id = message.id;
+    }
+    if (message.spiffeId !== "") {
+      obj.spiffeId = message.spiffeId;
+    }
+    if (message.namespace !== "") {
+      obj.namespace = message.namespace;
+    }
+    if (message.pattern !== "") {
+      obj.pattern = message.pattern;
+    }
+    if (message.permissions?.length) {
+      obj.permissions = message.permissions;
+    }
+    if (message.createdAt !== "") {
+      obj.createdAt = message.createdAt;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<PolicyInfo>): PolicyInfo {
+    return PolicyInfo.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<PolicyInfo>): PolicyInfo {
+    const message = createBasePolicyInfo();
+    message.id = object.id ?? "";
+    message.spiffeId = object.spiffeId ?? "";
+    message.namespace = object.namespace ?? "";
+    message.pattern = object.pattern ?? "";
+    message.permissions = object.permissions?.map((e) => e) || [];
+    message.createdAt = object.createdAt ?? "";
+    return message;
+  },
+};
+
+function createBaseListPoliciesResponse(): ListPoliciesResponse {
+  return { policies: [] };
+}
+
+export const ListPoliciesResponse: MessageFns<ListPoliciesResponse> = {
+  encode(message: ListPoliciesResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.policies) {
+      PolicyInfo.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListPoliciesResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListPoliciesResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.policies.push(PolicyInfo.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListPoliciesResponse {
+    return {
+      policies: globalThis.Array.isArray(object?.policies)
+        ? object.policies.map((e: any) => PolicyInfo.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ListPoliciesResponse): unknown {
+    const obj: any = {};
+    if (message.policies?.length) {
+      obj.policies = message.policies.map((e) => PolicyInfo.toJSON(e));
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListPoliciesResponse>): ListPoliciesResponse {
+    return ListPoliciesResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListPoliciesResponse>): ListPoliciesResponse {
+    const message = createBaseListPoliciesResponse();
+    message.policies = object.policies?.map((e) => PolicyInfo.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseDeletePolicyRequest(): DeletePolicyRequest {
+  return { id: "" };
+}
+
+export const DeletePolicyRequest: MessageFns<DeletePolicyRequest> = {
+  encode(message: DeletePolicyRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.id !== "") {
+      writer.uint32(10).string(message.id);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeletePolicyRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeletePolicyRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.id = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeletePolicyRequest {
+    return { id: isSet(object.id) ? globalThis.String(object.id) : "" };
+  },
+
+  toJSON(message: DeletePolicyRequest): unknown {
+    const obj: any = {};
+    if (message.id !== "") {
+      obj.id = message.id;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DeletePolicyRequest>): DeletePolicyRequest {
+    return DeletePolicyRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DeletePolicyRequest>): DeletePolicyRequest {
+    const message = createBaseDeletePolicyRequest();
+    message.id = object.id ?? "";
+    return message;
+  },
+};
+
+function createBaseDeletePolicyResponse(): DeletePolicyResponse {
+  return { message: "" };
+}
+
+export const DeletePolicyResponse: MessageFns<DeletePolicyResponse> = {
+  encode(message: DeletePolicyResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.message !== "") {
+      writer.uint32(10).string(message.message);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeletePolicyResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeletePolicyResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.message = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeletePolicyResponse {
+    return { message: isSet(object.message) ? globalThis.String(object.message) : "" };
+  },
+
+  toJSON(message: DeletePolicyResponse): unknown {
+    const obj: any = {};
+    if (message.message !== "") {
+      obj.message = message.message;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DeletePolicyResponse>): DeletePolicyResponse {
+    return DeletePolicyResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DeletePolicyResponse>): DeletePolicyResponse {
+    const message = createBaseDeletePolicyResponse();
+    message.message = object.message ?? "";
     return message;
   },
 };
@@ -3585,6 +4209,43 @@ export const AdminServiceService = {
       Buffer.from(RotateMasterKeyResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer): RotateMasterKeyResponse => RotateMasterKeyResponse.decode(value),
   },
+  /**
+   * Access policy management. Most workloads never need an explicit policy —
+   * see the convention-first model in docs/policies.md: a caller whose SPIFFE
+   * ID encodes ns/<namespace>/sa/<service> matching a secret's own
+   * namespace/service is granted access automatically. These RPCs are only
+   * for cross-namespace/cross-service or wildcard grants.
+   */
+  createPolicy: {
+    path: "/admin.v1.AdminService/CreatePolicy" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: CreatePolicyRequest): Buffer => Buffer.from(CreatePolicyRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): CreatePolicyRequest => CreatePolicyRequest.decode(value),
+    responseSerialize: (value: CreatePolicyResponse): Buffer =>
+      Buffer.from(CreatePolicyResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): CreatePolicyResponse => CreatePolicyResponse.decode(value),
+  },
+  listPolicies: {
+    path: "/admin.v1.AdminService/ListPolicies" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: ListPoliciesRequest): Buffer => Buffer.from(ListPoliciesRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): ListPoliciesRequest => ListPoliciesRequest.decode(value),
+    responseSerialize: (value: ListPoliciesResponse): Buffer =>
+      Buffer.from(ListPoliciesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): ListPoliciesResponse => ListPoliciesResponse.decode(value),
+  },
+  deletePolicy: {
+    path: "/admin.v1.AdminService/DeletePolicy" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: DeletePolicyRequest): Buffer => Buffer.from(DeletePolicyRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): DeletePolicyRequest => DeletePolicyRequest.decode(value),
+    responseSerialize: (value: DeletePolicyResponse): Buffer =>
+      Buffer.from(DeletePolicyResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): DeletePolicyResponse => DeletePolicyResponse.decode(value),
+  },
 } as const;
 
 export interface AdminServiceServer extends UntypedServiceImplementation {
@@ -3607,6 +4268,16 @@ export interface AdminServiceServer extends UntypedServiceImplementation {
    * updating the Kubernetes Secret (cluster-native auto-unseal) afterward.
    */
   rotateMasterKey: handleUnaryCall<RotateMasterKeyRequest, RotateMasterKeyResponse>;
+  /**
+   * Access policy management. Most workloads never need an explicit policy —
+   * see the convention-first model in docs/policies.md: a caller whose SPIFFE
+   * ID encodes ns/<namespace>/sa/<service> matching a secret's own
+   * namespace/service is granted access automatically. These RPCs are only
+   * for cross-namespace/cross-service or wildcard grants.
+   */
+  createPolicy: handleUnaryCall<CreatePolicyRequest, CreatePolicyResponse>;
+  listPolicies: handleUnaryCall<ListPoliciesRequest, ListPoliciesResponse>;
+  deletePolicy: handleUnaryCall<DeletePolicyRequest, DeletePolicyResponse>;
 }
 
 export interface AdminServiceClient extends Client {
@@ -3737,6 +4408,58 @@ export interface AdminServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: RotateMasterKeyResponse) => void,
+  ): ClientUnaryCall;
+  /**
+   * Access policy management. Most workloads never need an explicit policy —
+   * see the convention-first model in docs/policies.md: a caller whose SPIFFE
+   * ID encodes ns/<namespace>/sa/<service> matching a secret's own
+   * namespace/service is granted access automatically. These RPCs are only
+   * for cross-namespace/cross-service or wildcard grants.
+   */
+  createPolicy(
+    request: CreatePolicyRequest,
+    callback: (error: ServiceError | null, response: CreatePolicyResponse) => void,
+  ): ClientUnaryCall;
+  createPolicy(
+    request: CreatePolicyRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: CreatePolicyResponse) => void,
+  ): ClientUnaryCall;
+  createPolicy(
+    request: CreatePolicyRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: CreatePolicyResponse) => void,
+  ): ClientUnaryCall;
+  listPolicies(
+    request: ListPoliciesRequest,
+    callback: (error: ServiceError | null, response: ListPoliciesResponse) => void,
+  ): ClientUnaryCall;
+  listPolicies(
+    request: ListPoliciesRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ListPoliciesResponse) => void,
+  ): ClientUnaryCall;
+  listPolicies(
+    request: ListPoliciesRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ListPoliciesResponse) => void,
+  ): ClientUnaryCall;
+  deletePolicy(
+    request: DeletePolicyRequest,
+    callback: (error: ServiceError | null, response: DeletePolicyResponse) => void,
+  ): ClientUnaryCall;
+  deletePolicy(
+    request: DeletePolicyRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: DeletePolicyResponse) => void,
+  ): ClientUnaryCall;
+  deletePolicy(
+    request: DeletePolicyRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: DeletePolicyResponse) => void,
   ): ClientUnaryCall;
 }
 

@@ -914,6 +914,393 @@ func (x *RotateMasterKeyResponse) GetKeksRewrapped() int32 {
 	return 0
 }
 
+type CreatePolicyRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// spiffe_id is a glob matched against the caller's SPIFFE ID. '*' matches
+	// any single path segment (does not cross '/'); e.g.
+	// "spiffe://cluster.local/ns/*/sa/echo" matches the "echo" service account
+	// in any namespace. To grant access to every workload in the trust domain,
+	// use "spiffe://cluster.local/ns/*/sa/*" — a bare "**" is NOT supported
+	// (this is Go's path.Match, not a shell/gitignore-style glob engine).
+	SpiffeId string `protobuf:"bytes,1,opt,name=spiffe_id,json=spiffeId,proto3" json:"spiffe_id,omitempty"`
+	// namespace is the target secret's namespace, or "*" for any namespace.
+	Namespace string `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// service is the target secret's service. Combined with secret_name into
+	// a "namespace/service/secret_name" pattern evaluated the same way.
+	Service string `protobuf:"bytes,3,opt,name=service,proto3" json:"service,omitempty"`
+	// secret_name is a glob for the secret name within namespace/service.
+	// Defaults to "*" (every secret in that namespace/service) if empty.
+	SecretName string `protobuf:"bytes,4,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	// permissions granted, e.g. ["read"]. "*" grants every permission.
+	// Defaults to ["read"] if empty.
+	Permissions   []string `protobuf:"bytes,5,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreatePolicyRequest) Reset() {
+	*x = CreatePolicyRequest{}
+	mi := &file_admin_v1_admin_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatePolicyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatePolicyRequest) ProtoMessage() {}
+
+func (x *CreatePolicyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_admin_v1_admin_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatePolicyRequest.ProtoReflect.Descriptor instead.
+func (*CreatePolicyRequest) Descriptor() ([]byte, []int) {
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *CreatePolicyRequest) GetSpiffeId() string {
+	if x != nil {
+		return x.SpiffeId
+	}
+	return ""
+}
+
+func (x *CreatePolicyRequest) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *CreatePolicyRequest) GetService() string {
+	if x != nil {
+		return x.Service
+	}
+	return ""
+}
+
+func (x *CreatePolicyRequest) GetSecretName() string {
+	if x != nil {
+		return x.SecretName
+	}
+	return ""
+}
+
+func (x *CreatePolicyRequest) GetPermissions() []string {
+	if x != nil {
+		return x.Permissions
+	}
+	return nil
+}
+
+type CreatePolicyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreatePolicyResponse) Reset() {
+	*x = CreatePolicyResponse{}
+	mi := &file_admin_v1_admin_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatePolicyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatePolicyResponse) ProtoMessage() {}
+
+func (x *CreatePolicyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_admin_v1_admin_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatePolicyResponse.ProtoReflect.Descriptor instead.
+func (*CreatePolicyResponse) Descriptor() ([]byte, []int) {
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *CreatePolicyResponse) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type ListPoliciesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPoliciesRequest) Reset() {
+	*x = ListPoliciesRequest{}
+	mi := &file_admin_v1_admin_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPoliciesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPoliciesRequest) ProtoMessage() {}
+
+func (x *ListPoliciesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_admin_v1_admin_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPoliciesRequest.ProtoReflect.Descriptor instead.
+func (*ListPoliciesRequest) Descriptor() ([]byte, []int) {
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{19}
+}
+
+type PolicyInfo struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	SpiffeId  string                 `protobuf:"bytes,2,opt,name=spiffe_id,json=spiffeId,proto3" json:"spiffe_id,omitempty"`
+	Namespace string                 `protobuf:"bytes,3,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// pattern is the full "namespace/service/secret_name"-shaped glob as
+	// stored — service and secret_name are not tracked as separate fields.
+	Pattern       string   `protobuf:"bytes,4,opt,name=pattern,proto3" json:"pattern,omitempty"`
+	Permissions   []string `protobuf:"bytes,5,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	CreatedAt     string   `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PolicyInfo) Reset() {
+	*x = PolicyInfo{}
+	mi := &file_admin_v1_admin_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PolicyInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PolicyInfo) ProtoMessage() {}
+
+func (x *PolicyInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_admin_v1_admin_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PolicyInfo.ProtoReflect.Descriptor instead.
+func (*PolicyInfo) Descriptor() ([]byte, []int) {
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *PolicyInfo) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *PolicyInfo) GetSpiffeId() string {
+	if x != nil {
+		return x.SpiffeId
+	}
+	return ""
+}
+
+func (x *PolicyInfo) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *PolicyInfo) GetPattern() string {
+	if x != nil {
+		return x.Pattern
+	}
+	return ""
+}
+
+func (x *PolicyInfo) GetPermissions() []string {
+	if x != nil {
+		return x.Permissions
+	}
+	return nil
+}
+
+func (x *PolicyInfo) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+type ListPoliciesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Policies      []*PolicyInfo          `protobuf:"bytes,1,rep,name=policies,proto3" json:"policies,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPoliciesResponse) Reset() {
+	*x = ListPoliciesResponse{}
+	mi := &file_admin_v1_admin_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPoliciesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPoliciesResponse) ProtoMessage() {}
+
+func (x *ListPoliciesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_admin_v1_admin_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPoliciesResponse.ProtoReflect.Descriptor instead.
+func (*ListPoliciesResponse) Descriptor() ([]byte, []int) {
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ListPoliciesResponse) GetPolicies() []*PolicyInfo {
+	if x != nil {
+		return x.Policies
+	}
+	return nil
+}
+
+type DeletePolicyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeletePolicyRequest) Reset() {
+	*x = DeletePolicyRequest{}
+	mi := &file_admin_v1_admin_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeletePolicyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeletePolicyRequest) ProtoMessage() {}
+
+func (x *DeletePolicyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_admin_v1_admin_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeletePolicyRequest.ProtoReflect.Descriptor instead.
+func (*DeletePolicyRequest) Descriptor() ([]byte, []int) {
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *DeletePolicyRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type DeletePolicyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeletePolicyResponse) Reset() {
+	*x = DeletePolicyResponse{}
+	mi := &file_admin_v1_admin_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeletePolicyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeletePolicyResponse) ProtoMessage() {}
+
+func (x *DeletePolicyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_admin_v1_admin_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeletePolicyResponse.ProtoReflect.Descriptor instead.
+func (*DeletePolicyResponse) Descriptor() ([]byte, []int) {
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *DeletePolicyResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 type GetSOPSPublicKeyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -922,7 +1309,7 @@ type GetSOPSPublicKeyRequest struct {
 
 func (x *GetSOPSPublicKeyRequest) Reset() {
 	*x = GetSOPSPublicKeyRequest{}
-	mi := &file_admin_v1_admin_proto_msgTypes[17]
+	mi := &file_admin_v1_admin_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -934,7 +1321,7 @@ func (x *GetSOPSPublicKeyRequest) String() string {
 func (*GetSOPSPublicKeyRequest) ProtoMessage() {}
 
 func (x *GetSOPSPublicKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[17]
+	mi := &file_admin_v1_admin_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -947,7 +1334,7 @@ func (x *GetSOPSPublicKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSOPSPublicKeyRequest.ProtoReflect.Descriptor instead.
 func (*GetSOPSPublicKeyRequest) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{17}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{24}
 }
 
 type GetSOPSPublicKeyResponse struct {
@@ -964,7 +1351,7 @@ type GetSOPSPublicKeyResponse struct {
 
 func (x *GetSOPSPublicKeyResponse) Reset() {
 	*x = GetSOPSPublicKeyResponse{}
-	mi := &file_admin_v1_admin_proto_msgTypes[18]
+	mi := &file_admin_v1_admin_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -976,7 +1363,7 @@ func (x *GetSOPSPublicKeyResponse) String() string {
 func (*GetSOPSPublicKeyResponse) ProtoMessage() {}
 
 func (x *GetSOPSPublicKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[18]
+	mi := &file_admin_v1_admin_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -989,7 +1376,7 @@ func (x *GetSOPSPublicKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSOPSPublicKeyResponse.ProtoReflect.Descriptor instead.
 func (*GetSOPSPublicKeyResponse) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{18}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *GetSOPSPublicKeyResponse) GetPublicKey() string {
@@ -1028,7 +1415,7 @@ type RotateSOPSKeyRequest struct {
 
 func (x *RotateSOPSKeyRequest) Reset() {
 	*x = RotateSOPSKeyRequest{}
-	mi := &file_admin_v1_admin_proto_msgTypes[19]
+	mi := &file_admin_v1_admin_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1040,7 +1427,7 @@ func (x *RotateSOPSKeyRequest) String() string {
 func (*RotateSOPSKeyRequest) ProtoMessage() {}
 
 func (x *RotateSOPSKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[19]
+	mi := &file_admin_v1_admin_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1053,7 +1440,7 @@ func (x *RotateSOPSKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotateSOPSKeyRequest.ProtoReflect.Descriptor instead.
 func (*RotateSOPSKeyRequest) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{19}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{26}
 }
 
 type RotateSOPSKeyResponse struct {
@@ -1070,7 +1457,7 @@ type RotateSOPSKeyResponse struct {
 
 func (x *RotateSOPSKeyResponse) Reset() {
 	*x = RotateSOPSKeyResponse{}
-	mi := &file_admin_v1_admin_proto_msgTypes[20]
+	mi := &file_admin_v1_admin_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1082,7 +1469,7 @@ func (x *RotateSOPSKeyResponse) String() string {
 func (*RotateSOPSKeyResponse) ProtoMessage() {}
 
 func (x *RotateSOPSKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[20]
+	mi := &file_admin_v1_admin_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1095,7 +1482,7 @@ func (x *RotateSOPSKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotateSOPSKeyResponse.ProtoReflect.Descriptor instead.
 func (*RotateSOPSKeyResponse) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{20}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *RotateSOPSKeyResponse) GetNewPublicKey() string {
@@ -1134,7 +1521,7 @@ type ListSOPSKeysRequest struct {
 
 func (x *ListSOPSKeysRequest) Reset() {
 	*x = ListSOPSKeysRequest{}
-	mi := &file_admin_v1_admin_proto_msgTypes[21]
+	mi := &file_admin_v1_admin_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1146,7 +1533,7 @@ func (x *ListSOPSKeysRequest) String() string {
 func (*ListSOPSKeysRequest) ProtoMessage() {}
 
 func (x *ListSOPSKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[21]
+	mi := &file_admin_v1_admin_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1159,7 +1546,7 @@ func (x *ListSOPSKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSOPSKeysRequest.ProtoReflect.Descriptor instead.
 func (*ListSOPSKeysRequest) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{21}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{28}
 }
 
 type SOPSKeyInfo struct {
@@ -1177,7 +1564,7 @@ type SOPSKeyInfo struct {
 
 func (x *SOPSKeyInfo) Reset() {
 	*x = SOPSKeyInfo{}
-	mi := &file_admin_v1_admin_proto_msgTypes[22]
+	mi := &file_admin_v1_admin_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1189,7 +1576,7 @@ func (x *SOPSKeyInfo) String() string {
 func (*SOPSKeyInfo) ProtoMessage() {}
 
 func (x *SOPSKeyInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[22]
+	mi := &file_admin_v1_admin_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1202,7 +1589,7 @@ func (x *SOPSKeyInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SOPSKeyInfo.ProtoReflect.Descriptor instead.
 func (*SOPSKeyInfo) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{22}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *SOPSKeyInfo) GetPublicKey() string {
@@ -1256,7 +1643,7 @@ type ListSOPSKeysResponse struct {
 
 func (x *ListSOPSKeysResponse) Reset() {
 	*x = ListSOPSKeysResponse{}
-	mi := &file_admin_v1_admin_proto_msgTypes[23]
+	mi := &file_admin_v1_admin_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1268,7 +1655,7 @@ func (x *ListSOPSKeysResponse) String() string {
 func (*ListSOPSKeysResponse) ProtoMessage() {}
 
 func (x *ListSOPSKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[23]
+	mi := &file_admin_v1_admin_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1281,7 +1668,7 @@ func (x *ListSOPSKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSOPSKeysResponse.ProtoReflect.Descriptor instead.
 func (*ListSOPSKeysResponse) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{23}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ListSOPSKeysResponse) GetKeys() []*SOPSKeyInfo {
@@ -1300,7 +1687,7 @@ type PruneSOPSKeyRequest struct {
 
 func (x *PruneSOPSKeyRequest) Reset() {
 	*x = PruneSOPSKeyRequest{}
-	mi := &file_admin_v1_admin_proto_msgTypes[24]
+	mi := &file_admin_v1_admin_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1312,7 +1699,7 @@ func (x *PruneSOPSKeyRequest) String() string {
 func (*PruneSOPSKeyRequest) ProtoMessage() {}
 
 func (x *PruneSOPSKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[24]
+	mi := &file_admin_v1_admin_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1325,7 +1712,7 @@ func (x *PruneSOPSKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PruneSOPSKeyRequest.ProtoReflect.Descriptor instead.
 func (*PruneSOPSKeyRequest) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{24}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *PruneSOPSKeyRequest) GetPublicKey() string {
@@ -1344,7 +1731,7 @@ type PruneSOPSKeyResponse struct {
 
 func (x *PruneSOPSKeyResponse) Reset() {
 	*x = PruneSOPSKeyResponse{}
-	mi := &file_admin_v1_admin_proto_msgTypes[25]
+	mi := &file_admin_v1_admin_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1356,7 +1743,7 @@ func (x *PruneSOPSKeyResponse) String() string {
 func (*PruneSOPSKeyResponse) ProtoMessage() {}
 
 func (x *PruneSOPSKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[25]
+	mi := &file_admin_v1_admin_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1369,7 +1756,7 @@ func (x *PruneSOPSKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PruneSOPSKeyResponse.ProtoReflect.Descriptor instead.
 func (*PruneSOPSKeyResponse) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{25}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *PruneSOPSKeyResponse) GetMessage() string {
@@ -1396,7 +1783,7 @@ type RegisterRepositoryRequest struct {
 
 func (x *RegisterRepositoryRequest) Reset() {
 	*x = RegisterRepositoryRequest{}
-	mi := &file_admin_v1_admin_proto_msgTypes[26]
+	mi := &file_admin_v1_admin_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1408,7 +1795,7 @@ func (x *RegisterRepositoryRequest) String() string {
 func (*RegisterRepositoryRequest) ProtoMessage() {}
 
 func (x *RegisterRepositoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[26]
+	mi := &file_admin_v1_admin_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1421,7 +1808,7 @@ func (x *RegisterRepositoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterRepositoryRequest.ProtoReflect.Descriptor instead.
 func (*RegisterRepositoryRequest) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{26}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *RegisterRepositoryRequest) GetName() string {
@@ -1480,7 +1867,7 @@ type RegisterRepositoryResponse struct {
 
 func (x *RegisterRepositoryResponse) Reset() {
 	*x = RegisterRepositoryResponse{}
-	mi := &file_admin_v1_admin_proto_msgTypes[27]
+	mi := &file_admin_v1_admin_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1492,7 +1879,7 @@ func (x *RegisterRepositoryResponse) String() string {
 func (*RegisterRepositoryResponse) ProtoMessage() {}
 
 func (x *RegisterRepositoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[27]
+	mi := &file_admin_v1_admin_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1505,7 +1892,7 @@ func (x *RegisterRepositoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterRepositoryResponse.ProtoReflect.Descriptor instead.
 func (*RegisterRepositoryResponse) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{27}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *RegisterRepositoryResponse) GetId() string {
@@ -1537,7 +1924,7 @@ type ListRepositoriesRequest struct {
 
 func (x *ListRepositoriesRequest) Reset() {
 	*x = ListRepositoriesRequest{}
-	mi := &file_admin_v1_admin_proto_msgTypes[28]
+	mi := &file_admin_v1_admin_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1549,7 +1936,7 @@ func (x *ListRepositoriesRequest) String() string {
 func (*ListRepositoriesRequest) ProtoMessage() {}
 
 func (x *ListRepositoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[28]
+	mi := &file_admin_v1_admin_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1562,7 +1949,7 @@ func (x *ListRepositoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRepositoriesRequest.ProtoReflect.Descriptor instead.
 func (*ListRepositoriesRequest) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{28}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{35}
 }
 
 type RepositoryInfo struct {
@@ -1581,7 +1968,7 @@ type RepositoryInfo struct {
 
 func (x *RepositoryInfo) Reset() {
 	*x = RepositoryInfo{}
-	mi := &file_admin_v1_admin_proto_msgTypes[29]
+	mi := &file_admin_v1_admin_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1593,7 +1980,7 @@ func (x *RepositoryInfo) String() string {
 func (*RepositoryInfo) ProtoMessage() {}
 
 func (x *RepositoryInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[29]
+	mi := &file_admin_v1_admin_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1606,7 +1993,7 @@ func (x *RepositoryInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RepositoryInfo.ProtoReflect.Descriptor instead.
 func (*RepositoryInfo) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{29}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *RepositoryInfo) GetId() string {
@@ -1674,7 +2061,7 @@ type ListRepositoriesResponse struct {
 
 func (x *ListRepositoriesResponse) Reset() {
 	*x = ListRepositoriesResponse{}
-	mi := &file_admin_v1_admin_proto_msgTypes[30]
+	mi := &file_admin_v1_admin_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1686,7 +2073,7 @@ func (x *ListRepositoriesResponse) String() string {
 func (*ListRepositoriesResponse) ProtoMessage() {}
 
 func (x *ListRepositoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[30]
+	mi := &file_admin_v1_admin_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1699,7 +2086,7 @@ func (x *ListRepositoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRepositoriesResponse.ProtoReflect.Descriptor instead.
 func (*ListRepositoriesResponse) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{30}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *ListRepositoriesResponse) GetRepositories() []*RepositoryInfo {
@@ -1718,7 +2105,7 @@ type RemoveRepositoryRequest struct {
 
 func (x *RemoveRepositoryRequest) Reset() {
 	*x = RemoveRepositoryRequest{}
-	mi := &file_admin_v1_admin_proto_msgTypes[31]
+	mi := &file_admin_v1_admin_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1730,7 +2117,7 @@ func (x *RemoveRepositoryRequest) String() string {
 func (*RemoveRepositoryRequest) ProtoMessage() {}
 
 func (x *RemoveRepositoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[31]
+	mi := &file_admin_v1_admin_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1743,7 +2130,7 @@ func (x *RemoveRepositoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveRepositoryRequest.ProtoReflect.Descriptor instead.
 func (*RemoveRepositoryRequest) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{31}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *RemoveRepositoryRequest) GetId() string {
@@ -1762,7 +2149,7 @@ type RemoveRepositoryResponse struct {
 
 func (x *RemoveRepositoryResponse) Reset() {
 	*x = RemoveRepositoryResponse{}
-	mi := &file_admin_v1_admin_proto_msgTypes[32]
+	mi := &file_admin_v1_admin_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1774,7 +2161,7 @@ func (x *RemoveRepositoryResponse) String() string {
 func (*RemoveRepositoryResponse) ProtoMessage() {}
 
 func (x *RemoveRepositoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[32]
+	mi := &file_admin_v1_admin_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1787,7 +2174,7 @@ func (x *RemoveRepositoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveRepositoryResponse.ProtoReflect.Descriptor instead.
 func (*RemoveRepositoryResponse) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{32}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *RemoveRepositoryResponse) GetMessage() string {
@@ -1806,7 +2193,7 @@ type TriggerSyncRequest struct {
 
 func (x *TriggerSyncRequest) Reset() {
 	*x = TriggerSyncRequest{}
-	mi := &file_admin_v1_admin_proto_msgTypes[33]
+	mi := &file_admin_v1_admin_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1818,7 +2205,7 @@ func (x *TriggerSyncRequest) String() string {
 func (*TriggerSyncRequest) ProtoMessage() {}
 
 func (x *TriggerSyncRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[33]
+	mi := &file_admin_v1_admin_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1831,7 +2218,7 @@ func (x *TriggerSyncRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TriggerSyncRequest.ProtoReflect.Descriptor instead.
 func (*TriggerSyncRequest) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{33}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *TriggerSyncRequest) GetId() string {
@@ -1855,7 +2242,7 @@ type TriggerSyncResponse struct {
 
 func (x *TriggerSyncResponse) Reset() {
 	*x = TriggerSyncResponse{}
-	mi := &file_admin_v1_admin_proto_msgTypes[34]
+	mi := &file_admin_v1_admin_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1867,7 +2254,7 @@ func (x *TriggerSyncResponse) String() string {
 func (*TriggerSyncResponse) ProtoMessage() {}
 
 func (x *TriggerSyncResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[34]
+	mi := &file_admin_v1_admin_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1880,7 +2267,7 @@ func (x *TriggerSyncResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TriggerSyncResponse.ProtoReflect.Descriptor instead.
 func (*TriggerSyncResponse) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{34}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *TriggerSyncResponse) GetSecretsAdded() int32 {
@@ -1941,7 +2328,7 @@ type SyncBundleChunk struct {
 
 func (x *SyncBundleChunk) Reset() {
 	*x = SyncBundleChunk{}
-	mi := &file_admin_v1_admin_proto_msgTypes[35]
+	mi := &file_admin_v1_admin_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1953,7 +2340,7 @@ func (x *SyncBundleChunk) String() string {
 func (*SyncBundleChunk) ProtoMessage() {}
 
 func (x *SyncBundleChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[35]
+	mi := &file_admin_v1_admin_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1966,7 +2353,7 @@ func (x *SyncBundleChunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncBundleChunk.ProtoReflect.Descriptor instead.
 func (*SyncBundleChunk) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{35}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *SyncBundleChunk) GetPayload() isSyncBundleChunk_Payload {
@@ -2028,7 +2415,7 @@ type SyncBundleHeader struct {
 
 func (x *SyncBundleHeader) Reset() {
 	*x = SyncBundleHeader{}
-	mi := &file_admin_v1_admin_proto_msgTypes[36]
+	mi := &file_admin_v1_admin_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2040,7 +2427,7 @@ func (x *SyncBundleHeader) String() string {
 func (*SyncBundleHeader) ProtoMessage() {}
 
 func (x *SyncBundleHeader) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[36]
+	mi := &file_admin_v1_admin_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2053,7 +2440,7 @@ func (x *SyncBundleHeader) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncBundleHeader.ProtoReflect.Descriptor instead.
 func (*SyncBundleHeader) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{36}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *SyncBundleHeader) GetSecretsPath() string {
@@ -2091,7 +2478,7 @@ type SyncBundleResponse struct {
 
 func (x *SyncBundleResponse) Reset() {
 	*x = SyncBundleResponse{}
-	mi := &file_admin_v1_admin_proto_msgTypes[37]
+	mi := &file_admin_v1_admin_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2103,7 +2490,7 @@ func (x *SyncBundleResponse) String() string {
 func (*SyncBundleResponse) ProtoMessage() {}
 
 func (x *SyncBundleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_v1_admin_proto_msgTypes[37]
+	mi := &file_admin_v1_admin_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2116,7 +2503,7 @@ func (x *SyncBundleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncBundleResponse.ProtoReflect.Descriptor instead.
 func (*SyncBundleResponse) Descriptor() ([]byte, []int) {
-	return file_admin_v1_admin_proto_rawDescGZIP(), []int{37}
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *SyncBundleResponse) GetSecretsAdded() int32 {
@@ -2218,7 +2605,32 @@ const file_admin_v1_admin_proto_rawDesc = "" +
 	"\anew_key\x18\x01 \x01(\fR\x06newKey\"Z\n" +
 	"\x17RotateMasterKeyResponse\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12%\n" +
-	"\x0ekeks_rewrapped\x18\x02 \x01(\x05R\rkeksRewrapped\"\x19\n" +
+	"\x0ekeks_rewrapped\x18\x02 \x01(\x05R\rkeksRewrapped\"\xad\x01\n" +
+	"\x13CreatePolicyRequest\x12\x1b\n" +
+	"\tspiffe_id\x18\x01 \x01(\tR\bspiffeId\x12\x1c\n" +
+	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x18\n" +
+	"\aservice\x18\x03 \x01(\tR\aservice\x12\x1f\n" +
+	"\vsecret_name\x18\x04 \x01(\tR\n" +
+	"secretName\x12 \n" +
+	"\vpermissions\x18\x05 \x03(\tR\vpermissions\"&\n" +
+	"\x14CreatePolicyResponse\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x15\n" +
+	"\x13ListPoliciesRequest\"\xb2\x01\n" +
+	"\n" +
+	"PolicyInfo\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\tspiffe_id\x18\x02 \x01(\tR\bspiffeId\x12\x1c\n" +
+	"\tnamespace\x18\x03 \x01(\tR\tnamespace\x12\x18\n" +
+	"\apattern\x18\x04 \x01(\tR\apattern\x12 \n" +
+	"\vpermissions\x18\x05 \x03(\tR\vpermissions\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\"H\n" +
+	"\x14ListPoliciesResponse\x120\n" +
+	"\bpolicies\x18\x01 \x03(\v2\x14.admin.v1.PolicyInfoR\bpolicies\"%\n" +
+	"\x13DeletePolicyRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"0\n" +
+	"\x14DeletePolicyResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"\x19\n" +
 	"\x17GetSOPSPublicKeyRequest\"\x9c\x01\n" +
 	"\x18GetSOPSPublicKeyResponse\x12\x1d\n" +
 	"\n" +
@@ -2306,7 +2718,7 @@ const file_admin_v1_admin_proto_rawDesc = "" +
 	"\x0fsecrets_deleted\x18\x03 \x01(\x05R\x0esecretsDeleted\x12\x19\n" +
 	"\bsync_sha\x18\x04 \x01(\tR\asyncSha\x12\x16\n" +
 	"\x06errors\x18\x05 \x03(\tR\x06errors\x12%\n" +
-	"\x0econfigs_synced\x18\x06 \x01(\x05R\rconfigsSynced2\xb8\x04\n" +
+	"\x0econfigs_synced\x18\x06 \x01(\x05R\rconfigsSynced2\xa5\x06\n" +
 	"\fAdminService\x12D\n" +
 	"\tUnsealKey\x12\x1a.admin.v1.UnsealKeyRequest\x1a\x1b.admin.v1.UnsealKeyResponse\x12J\n" +
 	"\vUnsealShare\x12\x1c.admin.v1.UnsealShareRequest\x1a\x1d.admin.v1.UnsealShareResponse\x125\n" +
@@ -2315,7 +2727,10 @@ const file_admin_v1_admin_proto_rawDesc = "" +
 	"\tRotateKEK\x12\x1a.admin.v1.RotateKEKRequest\x1a\x1b.admin.v1.RotateKEKResponse\x12A\n" +
 	"\bListKEKs\x12\x19.admin.v1.ListKEKsRequest\x1a\x1a.admin.v1.ListKEKsResponse\x12A\n" +
 	"\bPruneKEK\x12\x19.admin.v1.PruneKEKRequest\x1a\x1a.admin.v1.PruneKEKResponse\x12V\n" +
-	"\x0fRotateMasterKey\x12 .admin.v1.RotateMasterKeyRequest\x1a!.admin.v1.RotateMasterKeyResponse2\x86\x06\n" +
+	"\x0fRotateMasterKey\x12 .admin.v1.RotateMasterKeyRequest\x1a!.admin.v1.RotateMasterKeyResponse\x12M\n" +
+	"\fCreatePolicy\x12\x1d.admin.v1.CreatePolicyRequest\x1a\x1e.admin.v1.CreatePolicyResponse\x12M\n" +
+	"\fListPolicies\x12\x1d.admin.v1.ListPoliciesRequest\x1a\x1e.admin.v1.ListPoliciesResponse\x12M\n" +
+	"\fDeletePolicy\x12\x1d.admin.v1.DeletePolicyRequest\x1a\x1e.admin.v1.DeletePolicyResponse2\x86\x06\n" +
 	"\rGitOpsService\x12Y\n" +
 	"\x10GetSOPSPublicKey\x12!.admin.v1.GetSOPSPublicKeyRequest\x1a\".admin.v1.GetSOPSPublicKeyResponse\x12P\n" +
 	"\rRotateSOPSKey\x12\x1e.admin.v1.RotateSOPSKeyRequest\x1a\x1f.admin.v1.RotateSOPSKeyResponse\x12M\n" +
@@ -2341,7 +2756,7 @@ func file_admin_v1_admin_proto_rawDescGZIP() []byte {
 }
 
 var file_admin_v1_admin_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_admin_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
+var file_admin_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
 var file_admin_v1_admin_proto_goTypes = []any{
 	(StatusResponse_State)(0),          // 0: admin.v1.StatusResponse.State
 	(*UnsealKeyRequest)(nil),           // 1: admin.v1.UnsealKeyRequest
@@ -2361,73 +2776,87 @@ var file_admin_v1_admin_proto_goTypes = []any{
 	(*PruneKEKResponse)(nil),           // 15: admin.v1.PruneKEKResponse
 	(*RotateMasterKeyRequest)(nil),     // 16: admin.v1.RotateMasterKeyRequest
 	(*RotateMasterKeyResponse)(nil),    // 17: admin.v1.RotateMasterKeyResponse
-	(*GetSOPSPublicKeyRequest)(nil),    // 18: admin.v1.GetSOPSPublicKeyRequest
-	(*GetSOPSPublicKeyResponse)(nil),   // 19: admin.v1.GetSOPSPublicKeyResponse
-	(*RotateSOPSKeyRequest)(nil),       // 20: admin.v1.RotateSOPSKeyRequest
-	(*RotateSOPSKeyResponse)(nil),      // 21: admin.v1.RotateSOPSKeyResponse
-	(*ListSOPSKeysRequest)(nil),        // 22: admin.v1.ListSOPSKeysRequest
-	(*SOPSKeyInfo)(nil),                // 23: admin.v1.SOPSKeyInfo
-	(*ListSOPSKeysResponse)(nil),       // 24: admin.v1.ListSOPSKeysResponse
-	(*PruneSOPSKeyRequest)(nil),        // 25: admin.v1.PruneSOPSKeyRequest
-	(*PruneSOPSKeyResponse)(nil),       // 26: admin.v1.PruneSOPSKeyResponse
-	(*RegisterRepositoryRequest)(nil),  // 27: admin.v1.RegisterRepositoryRequest
-	(*RegisterRepositoryResponse)(nil), // 28: admin.v1.RegisterRepositoryResponse
-	(*ListRepositoriesRequest)(nil),    // 29: admin.v1.ListRepositoriesRequest
-	(*RepositoryInfo)(nil),             // 30: admin.v1.RepositoryInfo
-	(*ListRepositoriesResponse)(nil),   // 31: admin.v1.ListRepositoriesResponse
-	(*RemoveRepositoryRequest)(nil),    // 32: admin.v1.RemoveRepositoryRequest
-	(*RemoveRepositoryResponse)(nil),   // 33: admin.v1.RemoveRepositoryResponse
-	(*TriggerSyncRequest)(nil),         // 34: admin.v1.TriggerSyncRequest
-	(*TriggerSyncResponse)(nil),        // 35: admin.v1.TriggerSyncResponse
-	(*SyncBundleChunk)(nil),            // 36: admin.v1.SyncBundleChunk
-	(*SyncBundleHeader)(nil),           // 37: admin.v1.SyncBundleHeader
-	(*SyncBundleResponse)(nil),         // 38: admin.v1.SyncBundleResponse
+	(*CreatePolicyRequest)(nil),        // 18: admin.v1.CreatePolicyRequest
+	(*CreatePolicyResponse)(nil),       // 19: admin.v1.CreatePolicyResponse
+	(*ListPoliciesRequest)(nil),        // 20: admin.v1.ListPoliciesRequest
+	(*PolicyInfo)(nil),                 // 21: admin.v1.PolicyInfo
+	(*ListPoliciesResponse)(nil),       // 22: admin.v1.ListPoliciesResponse
+	(*DeletePolicyRequest)(nil),        // 23: admin.v1.DeletePolicyRequest
+	(*DeletePolicyResponse)(nil),       // 24: admin.v1.DeletePolicyResponse
+	(*GetSOPSPublicKeyRequest)(nil),    // 25: admin.v1.GetSOPSPublicKeyRequest
+	(*GetSOPSPublicKeyResponse)(nil),   // 26: admin.v1.GetSOPSPublicKeyResponse
+	(*RotateSOPSKeyRequest)(nil),       // 27: admin.v1.RotateSOPSKeyRequest
+	(*RotateSOPSKeyResponse)(nil),      // 28: admin.v1.RotateSOPSKeyResponse
+	(*ListSOPSKeysRequest)(nil),        // 29: admin.v1.ListSOPSKeysRequest
+	(*SOPSKeyInfo)(nil),                // 30: admin.v1.SOPSKeyInfo
+	(*ListSOPSKeysResponse)(nil),       // 31: admin.v1.ListSOPSKeysResponse
+	(*PruneSOPSKeyRequest)(nil),        // 32: admin.v1.PruneSOPSKeyRequest
+	(*PruneSOPSKeyResponse)(nil),       // 33: admin.v1.PruneSOPSKeyResponse
+	(*RegisterRepositoryRequest)(nil),  // 34: admin.v1.RegisterRepositoryRequest
+	(*RegisterRepositoryResponse)(nil), // 35: admin.v1.RegisterRepositoryResponse
+	(*ListRepositoriesRequest)(nil),    // 36: admin.v1.ListRepositoriesRequest
+	(*RepositoryInfo)(nil),             // 37: admin.v1.RepositoryInfo
+	(*ListRepositoriesResponse)(nil),   // 38: admin.v1.ListRepositoriesResponse
+	(*RemoveRepositoryRequest)(nil),    // 39: admin.v1.RemoveRepositoryRequest
+	(*RemoveRepositoryResponse)(nil),   // 40: admin.v1.RemoveRepositoryResponse
+	(*TriggerSyncRequest)(nil),         // 41: admin.v1.TriggerSyncRequest
+	(*TriggerSyncResponse)(nil),        // 42: admin.v1.TriggerSyncResponse
+	(*SyncBundleChunk)(nil),            // 43: admin.v1.SyncBundleChunk
+	(*SyncBundleHeader)(nil),           // 44: admin.v1.SyncBundleHeader
+	(*SyncBundleResponse)(nil),         // 45: admin.v1.SyncBundleResponse
 }
 var file_admin_v1_admin_proto_depIdxs = []int32{
 	0,  // 0: admin.v1.StatusResponse.state:type_name -> admin.v1.StatusResponse.State
 	12, // 1: admin.v1.ListKEKsResponse.keks:type_name -> admin.v1.KEKInfo
-	23, // 2: admin.v1.ListSOPSKeysResponse.keys:type_name -> admin.v1.SOPSKeyInfo
-	30, // 3: admin.v1.ListRepositoriesResponse.repositories:type_name -> admin.v1.RepositoryInfo
-	37, // 4: admin.v1.SyncBundleChunk.header:type_name -> admin.v1.SyncBundleHeader
-	1,  // 5: admin.v1.AdminService.UnsealKey:input_type -> admin.v1.UnsealKeyRequest
-	3,  // 6: admin.v1.AdminService.UnsealShare:input_type -> admin.v1.UnsealShareRequest
-	5,  // 7: admin.v1.AdminService.Seal:input_type -> admin.v1.SealRequest
-	7,  // 8: admin.v1.AdminService.Status:input_type -> admin.v1.StatusRequest
-	9,  // 9: admin.v1.AdminService.RotateKEK:input_type -> admin.v1.RotateKEKRequest
-	11, // 10: admin.v1.AdminService.ListKEKs:input_type -> admin.v1.ListKEKsRequest
-	14, // 11: admin.v1.AdminService.PruneKEK:input_type -> admin.v1.PruneKEKRequest
-	16, // 12: admin.v1.AdminService.RotateMasterKey:input_type -> admin.v1.RotateMasterKeyRequest
-	18, // 13: admin.v1.GitOpsService.GetSOPSPublicKey:input_type -> admin.v1.GetSOPSPublicKeyRequest
-	20, // 14: admin.v1.GitOpsService.RotateSOPSKey:input_type -> admin.v1.RotateSOPSKeyRequest
-	22, // 15: admin.v1.GitOpsService.ListSOPSKeys:input_type -> admin.v1.ListSOPSKeysRequest
-	25, // 16: admin.v1.GitOpsService.PruneSOPSKey:input_type -> admin.v1.PruneSOPSKeyRequest
-	27, // 17: admin.v1.GitOpsService.RegisterRepository:input_type -> admin.v1.RegisterRepositoryRequest
-	29, // 18: admin.v1.GitOpsService.ListRepositories:input_type -> admin.v1.ListRepositoriesRequest
-	32, // 19: admin.v1.GitOpsService.RemoveRepository:input_type -> admin.v1.RemoveRepositoryRequest
-	34, // 20: admin.v1.GitOpsService.TriggerSync:input_type -> admin.v1.TriggerSyncRequest
-	36, // 21: admin.v1.GitOpsService.SyncBundle:input_type -> admin.v1.SyncBundleChunk
-	2,  // 22: admin.v1.AdminService.UnsealKey:output_type -> admin.v1.UnsealKeyResponse
-	4,  // 23: admin.v1.AdminService.UnsealShare:output_type -> admin.v1.UnsealShareResponse
-	6,  // 24: admin.v1.AdminService.Seal:output_type -> admin.v1.SealResponse
-	8,  // 25: admin.v1.AdminService.Status:output_type -> admin.v1.StatusResponse
-	10, // 26: admin.v1.AdminService.RotateKEK:output_type -> admin.v1.RotateKEKResponse
-	13, // 27: admin.v1.AdminService.ListKEKs:output_type -> admin.v1.ListKEKsResponse
-	15, // 28: admin.v1.AdminService.PruneKEK:output_type -> admin.v1.PruneKEKResponse
-	17, // 29: admin.v1.AdminService.RotateMasterKey:output_type -> admin.v1.RotateMasterKeyResponse
-	19, // 30: admin.v1.GitOpsService.GetSOPSPublicKey:output_type -> admin.v1.GetSOPSPublicKeyResponse
-	21, // 31: admin.v1.GitOpsService.RotateSOPSKey:output_type -> admin.v1.RotateSOPSKeyResponse
-	24, // 32: admin.v1.GitOpsService.ListSOPSKeys:output_type -> admin.v1.ListSOPSKeysResponse
-	26, // 33: admin.v1.GitOpsService.PruneSOPSKey:output_type -> admin.v1.PruneSOPSKeyResponse
-	28, // 34: admin.v1.GitOpsService.RegisterRepository:output_type -> admin.v1.RegisterRepositoryResponse
-	31, // 35: admin.v1.GitOpsService.ListRepositories:output_type -> admin.v1.ListRepositoriesResponse
-	33, // 36: admin.v1.GitOpsService.RemoveRepository:output_type -> admin.v1.RemoveRepositoryResponse
-	35, // 37: admin.v1.GitOpsService.TriggerSync:output_type -> admin.v1.TriggerSyncResponse
-	38, // 38: admin.v1.GitOpsService.SyncBundle:output_type -> admin.v1.SyncBundleResponse
-	22, // [22:39] is the sub-list for method output_type
-	5,  // [5:22] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	21, // 2: admin.v1.ListPoliciesResponse.policies:type_name -> admin.v1.PolicyInfo
+	30, // 3: admin.v1.ListSOPSKeysResponse.keys:type_name -> admin.v1.SOPSKeyInfo
+	37, // 4: admin.v1.ListRepositoriesResponse.repositories:type_name -> admin.v1.RepositoryInfo
+	44, // 5: admin.v1.SyncBundleChunk.header:type_name -> admin.v1.SyncBundleHeader
+	1,  // 6: admin.v1.AdminService.UnsealKey:input_type -> admin.v1.UnsealKeyRequest
+	3,  // 7: admin.v1.AdminService.UnsealShare:input_type -> admin.v1.UnsealShareRequest
+	5,  // 8: admin.v1.AdminService.Seal:input_type -> admin.v1.SealRequest
+	7,  // 9: admin.v1.AdminService.Status:input_type -> admin.v1.StatusRequest
+	9,  // 10: admin.v1.AdminService.RotateKEK:input_type -> admin.v1.RotateKEKRequest
+	11, // 11: admin.v1.AdminService.ListKEKs:input_type -> admin.v1.ListKEKsRequest
+	14, // 12: admin.v1.AdminService.PruneKEK:input_type -> admin.v1.PruneKEKRequest
+	16, // 13: admin.v1.AdminService.RotateMasterKey:input_type -> admin.v1.RotateMasterKeyRequest
+	18, // 14: admin.v1.AdminService.CreatePolicy:input_type -> admin.v1.CreatePolicyRequest
+	20, // 15: admin.v1.AdminService.ListPolicies:input_type -> admin.v1.ListPoliciesRequest
+	23, // 16: admin.v1.AdminService.DeletePolicy:input_type -> admin.v1.DeletePolicyRequest
+	25, // 17: admin.v1.GitOpsService.GetSOPSPublicKey:input_type -> admin.v1.GetSOPSPublicKeyRequest
+	27, // 18: admin.v1.GitOpsService.RotateSOPSKey:input_type -> admin.v1.RotateSOPSKeyRequest
+	29, // 19: admin.v1.GitOpsService.ListSOPSKeys:input_type -> admin.v1.ListSOPSKeysRequest
+	32, // 20: admin.v1.GitOpsService.PruneSOPSKey:input_type -> admin.v1.PruneSOPSKeyRequest
+	34, // 21: admin.v1.GitOpsService.RegisterRepository:input_type -> admin.v1.RegisterRepositoryRequest
+	36, // 22: admin.v1.GitOpsService.ListRepositories:input_type -> admin.v1.ListRepositoriesRequest
+	39, // 23: admin.v1.GitOpsService.RemoveRepository:input_type -> admin.v1.RemoveRepositoryRequest
+	41, // 24: admin.v1.GitOpsService.TriggerSync:input_type -> admin.v1.TriggerSyncRequest
+	43, // 25: admin.v1.GitOpsService.SyncBundle:input_type -> admin.v1.SyncBundleChunk
+	2,  // 26: admin.v1.AdminService.UnsealKey:output_type -> admin.v1.UnsealKeyResponse
+	4,  // 27: admin.v1.AdminService.UnsealShare:output_type -> admin.v1.UnsealShareResponse
+	6,  // 28: admin.v1.AdminService.Seal:output_type -> admin.v1.SealResponse
+	8,  // 29: admin.v1.AdminService.Status:output_type -> admin.v1.StatusResponse
+	10, // 30: admin.v1.AdminService.RotateKEK:output_type -> admin.v1.RotateKEKResponse
+	13, // 31: admin.v1.AdminService.ListKEKs:output_type -> admin.v1.ListKEKsResponse
+	15, // 32: admin.v1.AdminService.PruneKEK:output_type -> admin.v1.PruneKEKResponse
+	17, // 33: admin.v1.AdminService.RotateMasterKey:output_type -> admin.v1.RotateMasterKeyResponse
+	19, // 34: admin.v1.AdminService.CreatePolicy:output_type -> admin.v1.CreatePolicyResponse
+	22, // 35: admin.v1.AdminService.ListPolicies:output_type -> admin.v1.ListPoliciesResponse
+	24, // 36: admin.v1.AdminService.DeletePolicy:output_type -> admin.v1.DeletePolicyResponse
+	26, // 37: admin.v1.GitOpsService.GetSOPSPublicKey:output_type -> admin.v1.GetSOPSPublicKeyResponse
+	28, // 38: admin.v1.GitOpsService.RotateSOPSKey:output_type -> admin.v1.RotateSOPSKeyResponse
+	31, // 39: admin.v1.GitOpsService.ListSOPSKeys:output_type -> admin.v1.ListSOPSKeysResponse
+	33, // 40: admin.v1.GitOpsService.PruneSOPSKey:output_type -> admin.v1.PruneSOPSKeyResponse
+	35, // 41: admin.v1.GitOpsService.RegisterRepository:output_type -> admin.v1.RegisterRepositoryResponse
+	38, // 42: admin.v1.GitOpsService.ListRepositories:output_type -> admin.v1.ListRepositoriesResponse
+	40, // 43: admin.v1.GitOpsService.RemoveRepository:output_type -> admin.v1.RemoveRepositoryResponse
+	42, // 44: admin.v1.GitOpsService.TriggerSync:output_type -> admin.v1.TriggerSyncResponse
+	45, // 45: admin.v1.GitOpsService.SyncBundle:output_type -> admin.v1.SyncBundleResponse
+	26, // [26:46] is the sub-list for method output_type
+	6,  // [6:26] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_admin_v1_admin_proto_init() }
@@ -2435,7 +2864,7 @@ func file_admin_v1_admin_proto_init() {
 	if File_admin_v1_admin_proto != nil {
 		return
 	}
-	file_admin_v1_admin_proto_msgTypes[35].OneofWrappers = []any{
+	file_admin_v1_admin_proto_msgTypes[42].OneofWrappers = []any{
 		(*SyncBundleChunk_Header)(nil),
 		(*SyncBundleChunk_Data)(nil),
 	}
@@ -2445,7 +2874,7 @@ func file_admin_v1_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_admin_v1_admin_proto_rawDesc), len(file_admin_v1_admin_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   38,
+			NumMessages:   45,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
