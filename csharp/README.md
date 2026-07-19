@@ -17,7 +17,8 @@ dotnet add package Signet.Client
 
 Published to [NuGet](https://www.nuget.org/packages/Signet.Client) automatically by
 [`publish-csharp.yml`](../.github/workflows/publish-csharp.yml) whenever release-please tags a
-`csharp-v*` release.
+`csharp-v*` release, via [Trusted Publishing](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing)
+(OIDC — no long-lived API key stored in this repo).
 
 ## Regenerating stubs
 

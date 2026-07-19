@@ -12,6 +12,13 @@ jobs:
   publish:
     name: Build, test, and publish to NuGet
     runs-on: ubuntu-latest
+    permissions:
+      # NuGet Trusted Publishing (see NuGet/login below): this job exchanges
+      # a GitHub OIDC token for a short-lived (1 hour) NuGet API key, so no
+      # long-lived NUGET_API_KEY secret needs to exist at all. The trusted
+      # publishing policy on nuget.org must reference this exact repo
+      # (bytepunx/signet-clients) and workflow filename (publish-csharp.yml).
+      id-token: write
     defaults:
       run:
         working-directory: csharp
@@ -44,7 +51,16 @@ jobs:
         # produce a NuGet package for the non-packable test/example projects.
         run: dotnet pack SignetClient.csproj --configuration Release --output ./nupkg
 
+      # Exchanges this job's GitHub OIDC token for a short-lived nuget.org
+      # API key via the trusted publishing policy configured there — no
+      # stored secret to leak or rotate. "user" is the nuget.org profile
+      # name the policy is owned by (the bytepunx organization's nuget.org
+      # account name, not a GitHub username or email address).
+      - name: NuGet login (OIDC -> temp API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
       - name: dotnet nuget push
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: dotnet nuget push "./nupkg/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json
+        run: dotnet nuget push "./nupkg/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json
