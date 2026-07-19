@@ -16,6 +16,11 @@
 //	SPIFFE_WORKLOAD_SOCKET   SPIFFE Workload API socket, as a unix:// URI (required)
 //	SIGNET_NAMESPACE         signet namespace to fetch (required)
 //	SIGNET_SERVICE           signet service to fetch (required)
+//	SIGNET_SHARED_NAMESPACE  a second namespace to fetch, e.g. one only
+//	                         reachable via an access policy rather than the
+//	                         namespace/service convention (optional; must be
+//	                         set together with SIGNET_SHARED_SERVICE)
+//	SIGNET_SHARED_SERVICE    the service half of the pair above (optional)
 //	RESTART_LOCK_TTL_SECONDS restart lock TTL in seconds (optional, default 30)
 //	RESTART_DEBOUNCE_SECONDS restart debounce in seconds (optional, default 5)
 //
@@ -63,6 +68,8 @@ func main() {
 	socket := requireEnv("SPIFFE_WORKLOAD_SOCKET")
 	namespace := requireEnv("SIGNET_NAMESPACE")
 	service := requireEnv("SIGNET_SERVICE")
+	sharedNamespace := os.Getenv("SIGNET_SHARED_NAMESPACE")
+	sharedService := os.Getenv("SIGNET_SHARED_SERVICE")
 	lockTTL := time.Duration(envIntOrDefault("RESTART_LOCK_TTL_SECONDS", defaultLockTTLSeconds)) * time.Second
 	debounce := time.Duration(envIntOrDefault("RESTART_DEBOUNCE_SECONDS", defaultDebounceSeconds)) * time.Second
 
@@ -93,6 +100,26 @@ func main() {
 		log.Fatalf("decode bundle: %v", err)
 	}
 	fmt.Println("ECHO_BUNDLE: " + line)
+
+	// Optional second fetch proving cross-namespace access via an admin-
+	// granted policy actually works, not just the namespace/service
+	// convention — most workloads never need this (see signet's
+	// docs/policies.md), but the smoke-test harness sets these two env
+	// vars specifically to exercise that path end to end.
+	if sharedNamespace != "" && sharedService != "" {
+		sharedBundle, err := client.GetServiceBundle(ctx, &signetv1.GetServiceBundleRequest{
+			Namespace: sharedNamespace,
+			Service:   sharedService,
+		})
+		if err != nil {
+			log.Fatalf("GetServiceBundle (shared): %v", err)
+		}
+		sharedLine, err := echoBundleLine(sharedBundle)
+		if err != nil {
+			log.Fatalf("decode shared bundle: %v", err)
+		}
+		fmt.Println("ECHO_SHARED_BUNDLE: " + sharedLine)
+	}
 
 	// Block until signet reports a change and this replica holds the
 	// fleet-wide restart lock — the steady-state behavior while nothing has

@@ -26,6 +26,11 @@
 //   SPIFFE_WORKLOAD_SOCKET    - SPIFFE Workload API socket, a "unix://" URI (required)
 //   SIGNET_NAMESPACE          - signet namespace to fetch (required; via Downward API)
 //   SIGNET_SERVICE            - signet service to fetch (required)
+//   SIGNET_SHARED_NAMESPACE   - a second namespace to fetch, e.g. one only
+//                               reachable via an access policy rather than
+//                               the namespace/service convention (optional;
+//                               must be set together with SIGNET_SHARED_SERVICE)
+//   SIGNET_SHARED_SERVICE     - the service half of the pair above (optional)
 //   RESTART_LOCK_TTL_SECONDS  - restart lock TTL in seconds (optional, default 30)
 //   RESTART_DEBOUNCE_SECONDS  - restart debounce in seconds (optional, default 5)
 import { dialWorkload, waitForRestart, type SecretsServiceClient } from "@bytepunx/signet-client";
@@ -38,6 +43,8 @@ interface Config {
   workloadSocket: string;
   namespace: string;
   service: string;
+  sharedNamespace?: string;
+  sharedService?: string;
   lockTtlSeconds: number;
   debounceSeconds: number;
 }
@@ -67,6 +74,8 @@ function loadConfig(): Config {
     workloadSocket: requireEnv("SPIFFE_WORKLOAD_SOCKET"),
     namespace: requireEnv("SIGNET_NAMESPACE"),
     service: requireEnv("SIGNET_SERVICE"),
+    sharedNamespace: process.env.SIGNET_SHARED_NAMESPACE,
+    sharedService: process.env.SIGNET_SHARED_SERVICE,
     lockTtlSeconds: optionalPositiveInt("RESTART_LOCK_TTL_SECONDS", 30),
     debounceSeconds: optionalPositiveInt("RESTART_DEBOUNCE_SECONDS", 5),
   };
@@ -134,6 +143,17 @@ async function main(): Promise<void> {
     const bundleResp = await getServiceBundle(client, config.namespace, config.service);
     const decoded = decodeBundle(bundleResp.bundle);
     console.log(`ECHO_BUNDLE: ${JSON.stringify(decoded)}`);
+
+    // Optional second fetch proving cross-namespace access via an admin-
+    // granted policy actually works, not just the namespace/service
+    // convention — most workloads never need this (see signet's
+    // docs/policies.md), but the smoke-test harness sets these two env
+    // vars specifically to exercise that path end to end.
+    if (config.sharedNamespace && config.sharedService) {
+      const sharedResp = await getServiceBundle(client, config.sharedNamespace, config.sharedService);
+      const decodedShared = decodeBundle(sharedResp.bundle);
+      console.log(`ECHO_SHARED_BUNDLE: ${JSON.stringify(decodedShared)}`);
+    }
 
     // 5. Block — potentially indefinitely — until signet reports a change
     // AND this replica holds the fleet-wide restart lock.

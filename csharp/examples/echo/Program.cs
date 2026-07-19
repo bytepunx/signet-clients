@@ -86,6 +86,8 @@ async Task RunAsync(CancellationToken cancellationToken)
     var socket = RequireEnv("SPIFFE_WORKLOAD_SOCKET");
     var ns = RequireEnv("SIGNET_NAMESPACE");
     var service = RequireEnv("SIGNET_SERVICE");
+    var sharedNamespace = Environment.GetEnvironmentVariable("SIGNET_SHARED_NAMESPACE");
+    var sharedService = Environment.GetEnvironmentVariable("SIGNET_SHARED_SERVICE");
     var lockTtl = TimeSpan.FromSeconds(OptionalPositiveIntEnv("RESTART_LOCK_TTL_SECONDS", 30));
     var debounce = TimeSpan.FromSeconds(OptionalPositiveIntEnv("RESTART_DEBOUNCE_SECONDS", 5));
 
@@ -99,6 +101,19 @@ async Task RunAsync(CancellationToken cancellationToken)
         cancellationToken: cancellationToken).ConfigureAwait(false);
 
     Console.WriteLine("ECHO_BUNDLE: " + FormatBundle(bundle));
+
+    // Optional second fetch proving cross-namespace access via an admin-granted policy
+    // actually works, not just the namespace/service convention — most workloads never need
+    // this (see signet's docs/policies.md), but the smoke-test harness sets these two env
+    // vars specifically to exercise that path end to end.
+    if (!string.IsNullOrEmpty(sharedNamespace) && !string.IsNullOrEmpty(sharedService))
+    {
+        var sharedBundle = await client.GetServiceBundleAsync(
+            new GetServiceBundleRequest { Namespace = sharedNamespace, Service = sharedService },
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        Console.WriteLine("ECHO_SHARED_BUNDLE: " + FormatBundle(sharedBundle));
+    }
 
     // Blocks, potentially indefinitely — that's expected steady-state while nothing has
     // changed in this namespace/service's bundle.
