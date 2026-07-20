@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/bytepunx/signet-clients/compare/rust-v0.2.0...rust-v0.3.0) (2026-07-20)
+
+
+### Features
+
+* add automated package publishing for all five clients ([#24](https://github.com/bytepunx/signet-clients/issues/24)) ([1c8dee9](https://github.com/bytepunx/signet-clients/commit/1c8dee93eeac203b91c065420d53ef04ce350ce8))
+
 ## [0.2.0](https://github.com/bytepunx/signet-clients/compare/rust-v0.1.0...rust-v0.2.0) (2026-07-19)
 
 
