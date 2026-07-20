@@ -37,4 +37,11 @@ jobs:
       - name: cargo publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish
+        # --allow-dirty: src/gen is gitignored (see the include comment in
+        # Cargo.toml) — buf generate's freshly-written output is untracked,
+        # which cargo's default git-cleanliness check treats as "dirty" and
+        # refuses to publish. This doesn't change what gets packaged (that's
+        # still governed entirely by Cargo.toml's `include`); it only skips
+        # the check that assumes every publishable file is git-committed,
+        # which doesn't hold here by design.
+        run: cargo publish --allow-dirty
