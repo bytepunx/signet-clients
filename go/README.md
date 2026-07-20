@@ -8,6 +8,12 @@ independently of the server's own release cycle (see `buf.gen.yaml`).
 go get github.com/bytepunx/signet-clients/go
 ```
 
+Go modules need no separate publish step — pushing a `go/vX.Y.Z` tag (which release-please
+does automatically) already makes that version resolvable via `go get`.
+[`publish-go.yml`](../.github/workflows/publish-go.yml) additionally pings the module proxy
+so it's indexed on [pkg.go.dev](https://pkg.go.dev/github.com/bytepunx/signet-clients/go)
+immediately rather than on first request.
+
 ## Usage
 
 ### Workload access (SecretsService, SPIFFE mTLS)

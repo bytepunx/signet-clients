@@ -16,6 +16,10 @@ background.
 npm install @bytepunx/signet-client
 ```
 
+Published to [npm](https://www.npmjs.com/package/@bytepunx/signet-client) automatically by
+[`publish-typescript.yml`](../.github/workflows/publish-typescript.yml) whenever
+release-please tags a `typescript-v*` release.
+
 ## Regenerating stubs
 
 ```

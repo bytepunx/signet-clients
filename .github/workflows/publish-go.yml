@@ -1,0 +1,54 @@
+name: Publish Go module
+
+on:
+  push:
+    tags:
+      - "go/v*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Verify and index on the Go module proxy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache: true
+
+      - name: Set up buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: Regenerate proto stubs
+        working-directory: go
+        run: buf generate
+
+      - name: go vet
+        working-directory: go
+        run: go vet ./...
+
+      - name: go test
+        working-directory: go
+        run: go test -race -count=1 ./...
+
+      # Unlike the other four languages, Go has no central "publish" action —
+      # pushing a correctly-formed go/vX.Y.Z tag (see release-please-config.json's
+      # tag-separator for the "go" package) already makes the module resolvable
+      # via `go get`/`go install`. This step just asks proxy.golang.org to fetch
+      # and index it immediately, rather than waiting for the first real
+      # consumer's request to trigger that lazily — the difference between
+      # "available the moment this workflow finishes" and "available whenever
+      # someone happens to ask for it first".
+      - name: Trigger Go module proxy indexing
+        run: |
+          MODULE="github.com/bytepunx/signet-clients/go"
+          VERSION="${GITHUB_REF_NAME#go/}"
+          echo "Requesting proxy.golang.org index $MODULE@$VERSION"
+          curl -sf "https://proxy.golang.org/${MODULE}/@v/${VERSION}.info"

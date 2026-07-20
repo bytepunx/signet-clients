@@ -4,7 +4,8 @@
   "packages": {
     "go": {
       "release-type": "go",
-      "component": "go"
+      "component": "go",
+      "tag-separator": "/"
     },
     "python": {
       "release-type": "python",
@@ -20,7 +21,14 @@
     },
     "csharp": {
       "release-type": "simple",
-      "component": "csharp"
+      "component": "csharp",
+      "extra-files": [
+        {
+          "type": "xml",
+          "path": "SignetClient.csproj",
+          "xpath": "//Version"
+        }
+      ]
     }
   }
 }

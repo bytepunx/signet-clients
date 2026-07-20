@@ -9,6 +9,17 @@ connection setup, and `Restart.WatchBundleAsync`/`AcquireLockAsync`/`WaitForRest
 coordinated rolling restarts — expressed idiomatically for .NET (`Task`-based async, specific
 exception types, `IAsyncDisposable`), not a mechanical transliteration of the Go syntax.
 
+## Install
+
+```
+dotnet add package Signet.Client
+```
+
+Published to [NuGet](https://www.nuget.org/packages/Signet.Client) automatically by
+[`publish-csharp.yml`](../.github/workflows/publish-csharp.yml) whenever release-please tags a
+`csharp-v*` release, via [Trusted Publishing](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing)
+(OIDC — no long-lived API key stored in this repo).
+
 ## Regenerating stubs
 
 ```
