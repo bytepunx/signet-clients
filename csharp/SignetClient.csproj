@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>Signet.Client</PackageId>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Description>C# client for signet, generated from bytepunx/signet-proto</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -13,12 +13,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
-    <PackageReference Include="Google.Protobuf" Version="3.32.1" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.71.0"/>
+    <PackageReference Include="Google.Protobuf" Version="3.32.1"/>
     <!-- Third-party SPIFFE Workload API client (github.com/vurhanau/csharp-spiffe).
          Not an official spiffe.io project (unlike go-spiffe, which go/client.go
          depends on) — single maintainer, pre-1.0 (0.0.x), ~12 GitHub stars as of
@@ -26,13 +26,13 @@
          month) and its API (X509Source, Workload API client, AuthorizeMemberOf)
          maps cleanly onto go-spiffe's. See README.md's SPIFFE section for the
          full honesty writeup on this gap. -->
-    <PackageReference Include="Spiffe" Version="0.0.3" />
+    <PackageReference Include="Spiffe" Version="0.0.3"/>
   </ItemGroup>
 
   <ItemGroup>
     <!-- Exposes internal test seams (ILockStream/IWatchStream fakes drive the state machines
          directly, without a live network connection — see SignetClient.Tests). -->
-    <InternalsVisibleTo Include="SignetClient.Tests" />
+    <InternalsVisibleTo Include="SignetClient.Tests"/>
   </ItemGroup>
 
   <!-- SignetClient.Tests lives in a subdirectory of this project, so the SDK's default
@@ -40,10 +40,10 @@
        into this project. Exclude it explicitly — this is a Remove, not a duplicate Include, so
        it doesn't hit the NETSDK1022 trap the gen/ comment above warns about. -->
   <ItemGroup>
-    <Compile Remove="SignetClient.Tests/**/*.cs" />
-    <Content Remove="SignetClient.Tests/**" />
-    <None Remove="SignetClient.Tests/**" />
-    <EmbeddedResource Remove="SignetClient.Tests/**" />
+    <Compile Remove="SignetClient.Tests/**/*.cs"/>
+    <Content Remove="SignetClient.Tests/**"/>
+    <None Remove="SignetClient.Tests/**"/>
+    <EmbeddedResource Remove="SignetClient.Tests/**"/>
   </ItemGroup>
 
   <!-- Same NETSDK1022-class conflict as SignetClient.Tests above: examples/echo is its own
@@ -51,10 +51,10 @@
        and the SDK's default "**/*.cs" glob would otherwise also pull its Program.cs into this
        library project. -->
   <ItemGroup>
-    <Compile Remove="examples/**/*.cs" />
-    <Content Remove="examples/**" />
-    <None Remove="examples/**" />
-    <EmbeddedResource Remove="examples/**" />
+    <Compile Remove="examples/**/*.cs"/>
+    <Content Remove="examples/**"/>
+    <None Remove="examples/**"/>
+    <EmbeddedResource Remove="examples/**"/>
   </ItemGroup>
 
 
