@@ -1,0 +1,49 @@
+name: Build smoke-test echo images
+
+# TEST-ONLY images: each one is a minimal fixture that connects to a real
+# signet + SPIRE deployment and prints retrieved secrets/config to stdout,
+# for bytepunx/signet-smoke-test's log-based verification. Never deploy any
+# of these images, or anything derived from them, anywhere real — see each
+# example's own Dockerfile/source for the same warning repeated at the
+# point of use.
+#
+# Manual trigger only, and kept separate from ci.yml: these images are a
+# smoke-test artifact, not part of any client library's own release process,
+# so they don't need to build on every push/PR the way ci.yml's build+test
+# matrix does.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [go, python, typescript, rust, csharp]
+    name: ${{ matrix.language }} echo image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.language }}
+          file: ${{ matrix.language }}/examples/echo/Dockerfile
+          push: true
+          tags: ghcr.io/bytepunx/signet-echo-${{ matrix.language }}:latest
+          platforms: linux/amd64,linux/arm64
