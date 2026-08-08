@@ -85,6 +85,25 @@ CLI flags) is a container-native smoke-test fixture for the `bytepunx/signet-smo
 Docker/Kubernetes harness — see `examples/echo/Dockerfile` and the header comment in
 `echo.rs` for details; **test-only, do not run in production**.
 
+**Retry on the SPIRE identity-propagation race.** `dial_workload` retries automatically —
+no opt-in required, the function signature above is unchanged — if the Workload API reports
+"no identity issued" before it can hand back a connection. SPIRE's controller-manager
+reconciles a brand-new pod's SPIFFE identity registration reactively, off the pod's own
+creation event, and that registration takes a few seconds to propagate to the node-local
+SPIRE agent `dial_workload` talks to; a freshly-created pod's very first call — a
+Kubernetes Job's is the sharpest case, since a Job has no prior pod that might have already
+won this race for the same ServiceAccount — can lose it outright even though the identity
+shows up moments later. `dial_workload` probes readiness with a single-shot
+`WorkloadApiClient::fetch_x509_context` call (deliberately not `X509Source`'s own
+constructor, which already retries transient failures forever with its own internal,
+unbounded, unobservable backoff that would otherwise absorb this exact signal), retrying up
+to 5 total attempts with 1s/2s/4s/8s backoff only when the failure is specifically "no
+identity issued" — every other error is returned immediately, unretried. This is the exact
+schedule verified working in a real downstream consumer that hit this race
+(bytepunx/kluster's RabbitMQ credential-provisioning Job, which had to hand-roll the
+identical retry loop before this was moved into the library) — see
+[bytepunx/signet-clients#33](https://github.com/bytepunx/signet-clients/issues/33).
+
 **Status of the SPIFFE integration and a known gap.** Unlike the Erlang client (which has
 no maintained protobuf/gRPC toolchain at all for its ecosystem — see `../erlang/README.md`
 for that gap), Rust *does* have an actively-maintained SPIFFE Workload API client:
@@ -256,3 +275,14 @@ To also build/test the `spiffe-workload` feature (pulls in `spiffe`/`spiffe-rust
 cargo test --features spiffe-workload
 cargo build --examples --features spiffe-workload
 ```
+
+That feature's tests additionally cover `dial_workload`'s "no identity issued" retry
+(`retry_until_identity_issued` in `src/client.rs`) against a fake probe closure, with no
+real SPIRE agent required: a first-attempt success never retries; repeated "no identity
+issued" failures back off 1s then 2s before a later success (no further delay once it
+succeeds); any other Workload API error (e.g. a genuine `PermissionDenied` unrelated to
+missing identity) returns immediately, unretried; and exhausting all 5 attempts backs off
+the full 1s/2s/4s/8s schedule and returns `ClientError::WorkloadNoIdentityIssued` naming
+the attempt count and the last underlying error. These run under
+`#[tokio::test(start_paused = true)]`, so Tokio's virtual clock auto-advances through the
+backoff sleeps instantly rather than the tests actually taking up to 15s wall-clock time.
