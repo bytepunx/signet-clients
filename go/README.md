@@ -35,10 +35,22 @@ resp, err := client.GetSecret(ctx, &signetv1.GetSecretRequest{
 })
 ```
 
+`DialWorkload` retries automatically, no opt-in required, if it loses the race between a
+freshly-created pod's SPIFFE identity registration and this call: SPIRE's
+controller-manager registers a new pod's identity reactively (off the pod's own creation
+event), and that registration takes a few seconds to propagate to the node-local SPIRE
+agent this dials. A Job's very first `DialWorkload` call is the sharpest case, since it
+has no prior pod that might already have won this race for the same ServiceAccount. On
+"no identity issued" (and only that failure — anything else is returned immediately), it
+retries up to 5 times total (the initial attempt plus 4 retries), backing off 1s, 2s, 4s,
+8s between them (~15s worst case) — the exact schedule verified working in a real
+downstream consumer that hit this race. See
+[bytepunx/signet-clients#33](https://github.com/bytepunx/signet-clients/issues/33).
+
 ### Operator access (AdminService/GitOpsService, bearer token)
 
 ```go
-conn, err := signet.DialAdmin("localhost:8444", token, nil, false)
+conn, err := signet.DialAdmin("localhost:8444", token, nil, false, false)
 if err != nil {
     log.Fatal(err)
 }
@@ -47,6 +59,22 @@ defer conn.Close()
 admin := signet.AdminClient(conn)
 status, err := admin.Status(ctx, &adminv1.StatusRequest{})
 ```
+
+`DialAdmin` picks transport security from `addr`: loopback addresses (the documented
+`kubectl port-forward` workflow) default to plaintext, everything else upgrades to TLS
+automatically. The last two parameters override that heuristic in opposite directions —
+`forceTLS` requests TLS even for a loopback address, and `plaintext` forces insecure
+transport even for a non-loopback address, bypassing the heuristic entirely. `plaintext`
+exists for dialing a real in-cluster admin listener by its cluster-DNS name (a
+non-loopback address) once signet exposes one
+([bytepunx/signet#19](https://github.com/bytepunx/signet/issues/19)): that listener is
+intentionally still plaintext-behind-bearer-token, not TLS-terminated, and without
+`plaintext` the loopback heuristic would pick TLS and the handshake would fail
+immediately. Per-RPC bearer-token authentication is unaffected either way. `forceTLS` and
+`plaintext` are mutually exclusive with each other, and `plaintext` is mutually exclusive
+with a non-empty `caPEM`; `DialAdmin` returns an error if either combination is
+requested. See
+[bytepunx/signet-clients#32](https://github.com/bytepunx/signet-clients/issues/32).
 
 See `examples/getsecret` for a complete runnable example.
 
