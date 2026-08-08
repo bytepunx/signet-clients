@@ -2,10 +2,12 @@
 //!
 //! Mirrors `go/client.go`: [`dial_admin`] opens a bearer-token connection to
 //! the operator-facing `AdminService`/`GitOpsService` listener, applying the
-//! same loopback-defaults-to-plaintext logic as the Go client and the
-//! `signet` CLI. [`dial_workload`] (behind the `spiffe-workload` feature)
-//! opens a SPIFFE-mTLS connection to the workload-facing `SecretsService`
-//! listener.
+//! same loopback-defaults-to-plaintext logic (with the same `force_tls`/
+//! `plaintext` overrides) as the Go client and the `signet` CLI.
+//! [`dial_workload`] (behind the `spiffe-workload` feature) opens a
+//! SPIFFE-mTLS connection to the workload-facing `SecretsService` listener,
+//! retrying automatically — no opt-in required — if it loses the SPIRE
+//! identity-registration-propagation race described in its doc comment.
 
 use std::net::IpAddr;
 use std::path::Path;
@@ -28,6 +30,19 @@ pub enum ClientError {
     /// A CA PEM bundle was supplied but contained no parseable certificates.
     #[error("invalid CA PEM bundle: no certificates found")]
     InvalidCaPem,
+
+    /// `dial_admin` was called with both `force_tls` and `plaintext` set.
+    /// They request opposite overrides of the loopback heuristic, so
+    /// exactly one (or neither) may be set. See [`dial_admin`]'s doc
+    /// comment.
+    #[error("force_tls and plaintext are mutually exclusive")]
+    ForceTlsPlaintextConflict,
+
+    /// `dial_admin` was called with `plaintext` set and a non-empty
+    /// `ca_pem`. There is no meaningful CA to verify against when the
+    /// transport isn't TLS at all. See [`dial_admin`]'s doc comment.
+    #[error("plaintext and ca_pem are mutually exclusive")]
+    PlaintextCaPemConflict,
 
     /// A CA PEM bundle was supplied but failed to parse.
     #[error("invalid CA PEM bundle: {0}")]
@@ -64,6 +79,34 @@ pub enum ClientError {
         socket: String,
         #[source]
         source: spiffe::x509_source::X509SourceError,
+    },
+
+    /// [`dial_workload`]'s identity-readiness probe kept seeing "no
+    /// identity issued" through its full retry budget (see
+    /// `dial_workload`'s doc comment for the schedule and why this retry
+    /// exists — bytepunx/signet-clients#33) without ever observing success
+    /// or a different failure.
+    #[cfg(feature = "spiffe-workload")]
+    #[error("connect to SPIFFE workload API at {socket:?}: no identity issued after {attempts} attempts: {source}")]
+    WorkloadNoIdentityIssued {
+        socket: String,
+        attempts: usize,
+        #[source]
+        source: spiffe::WorkloadApiError,
+    },
+
+    /// [`dial_workload`]'s identity-readiness probe failed for a reason
+    /// other than "no identity issued" (a bad `socket_path`, an expired or
+    /// canceled deadline, a malformed `trust_domain`, a genuine
+    /// authorization problem once identity issuance is actually broken
+    /// rather than merely delayed, ...) — surfaced immediately, unretried,
+    /// so this never masks a real misconfiguration as a transient blip.
+    #[cfg(feature = "spiffe-workload")]
+    #[error("connect to SPIFFE workload API at {socket:?}: {source}")]
+    WorkloadProbe {
+        socket: String,
+        #[source]
+        source: spiffe::WorkloadApiError,
     },
 
     /// The supplied trust domain string was not a valid SPIFFE trust domain.
@@ -116,10 +159,35 @@ pub type AdminChannel = InterceptedService<Channel, TokenInterceptor>;
 /// Opens a gRPC connection to signet's admin listener, injecting `token`
 /// into every RPC as a bearer credential.
 ///
-/// Loopback addresses (the documented `kubectl port-forward` workflow) use
-/// plaintext by default; every other address is upgraded to TLS
-/// automatically using the system trust store, or the CA in `ca_pem` if
-/// provided. `force_tls` requests TLS even for a loopback address.
+/// Transport security is chosen automatically from `addr`:
+/// - Loopback addresses (`localhost`, `127.0.0.1`, `::1` — the documented
+///   `kubectl port-forward` workflow) default to plaintext.
+/// - Every other address is upgraded to TLS automatically, using the
+///   system trust store, or the CA in `ca_pem` if provided.
+///
+/// `force_tls` and `plaintext` both override that heuristic, in opposite
+/// directions:
+/// - `force_tls` requests TLS even for a loopback address (e.g. testing a
+///   real TLS-terminating proxy locally).
+/// - `plaintext` forces insecure transport credentials even for a
+///   non-loopback address, bypassing the loopback heuristic entirely. This
+///   is required once signet exposes a real in-cluster admin listener
+///   (bytepunx/signet#19): dialing that Service by its cluster-DNS name is
+///   a non-loopback address, but the listener is intentionally still
+///   plaintext-behind-bearer-token, not TLS-terminated — without
+///   `plaintext`, the loopback heuristic would pick TLS and the handshake
+///   would fail immediately ("wrong version number") against a server that
+///   never speaks TLS on that listener. See bytepunx/signet-clients#32.
+///
+/// Per-RPC bearer-token authentication (the actual mechanism signet uses to
+/// authenticate the caller) is unaffected either way — `plaintext` only
+/// changes the transport, never who signet trusts the caller to be.
+///
+/// `force_tls` and `plaintext` are mutually exclusive with each other
+/// ([`ClientError::ForceTlsPlaintextConflict`]), and `plaintext` is
+/// mutually exclusive with a non-empty `ca_pem`
+/// ([`ClientError::PlaintextCaPemConflict`]) — there is no meaningful CA to
+/// verify against when the transport isn't TLS at all.
 ///
 /// Returns [`ClientError::EmptyToken`] if `token` is empty or
 /// whitespace-only, before any connection attempt is made.
@@ -128,6 +196,7 @@ pub async fn dial_admin(
     token: impl AsRef<str>,
     ca_pem: Option<&[u8]>,
     force_tls: bool,
+    plaintext: bool,
 ) -> Result<AdminChannel, ClientError> {
     let addr = addr.as_ref();
     let token = token.as_ref().trim();
@@ -135,7 +204,7 @@ pub async fn dial_admin(
         return Err(ClientError::EmptyToken);
     }
 
-    let decision = admin_transport_decision(addr, ca_pem, force_tls)?;
+    let decision = admin_transport_decision(addr, ca_pem, force_tls, plaintext)?;
     let uri = format!(
         "{}://{addr}",
         if decision.requires_tls() { "https" } else { "http" }
@@ -207,10 +276,22 @@ pub(crate) fn admin_transport_decision(
     addr: &str,
     ca_pem: Option<&[u8]>,
     force_tls: bool,
+    plaintext: bool,
 ) -> Result<TransportDecision, ClientError> {
+    let ca_pem_non_empty = ca_pem.map(|pem| !pem.is_empty()).unwrap_or(false);
+
+    if plaintext && force_tls {
+        return Err(ClientError::ForceTlsPlaintextConflict);
+    }
+    if plaintext && ca_pem_non_empty {
+        return Err(ClientError::PlaintextCaPemConflict);
+    }
+    if plaintext {
+        return Ok(TransportDecision::Plaintext);
+    }
+
     let host = host_of(addr);
-    let use_tls =
-        force_tls || ca_pem.map(|pem| !pem.is_empty()).unwrap_or(false) || !is_loopback_host(&host);
+    let use_tls = force_tls || ca_pem_non_empty || !is_loopback_host(&host);
 
     if !use_tls {
         return Ok(TransportDecision::Plaintext);
@@ -275,11 +356,97 @@ mod workload {
     use std::pin::Pin;
     use std::sync::Arc;
     use std::task::{Context, Poll};
+    use std::time::Duration;
 
     use tokio::net::TcpStream;
     use tonic::codegen::http::Uri;
     use tonic::codegen::Service;
     use tonic::transport::{Channel, Endpoint};
+
+    /// The wait before each retry [`dial_workload`]'s identity-readiness
+    /// probe makes after the Workload API reports "no identity issued" (see
+    /// `dial_workload`'s doc comment): 1s, 2s, 4s, 8s — exponential,
+    /// doubling each time and capped at 8s. This is the exact schedule
+    /// verified working in a real downstream consumer that hit this race
+    /// (bytepunx/signet-clients#33 — bytepunx/kluster's RabbitMQ
+    /// credential-provisioning Job, which retries its own dial 5 times
+    /// total with this identical backoff), so `WORKLOAD_DIAL_BACKOFF.len()`
+    /// retries are made beyond the initial attempt —
+    /// `WORKLOAD_DIAL_MAX_ATTEMPTS` total — with a worst case of roughly
+    /// 15s of sleeping before `dial_workload` gives up.
+    const WORKLOAD_DIAL_BACKOFF: [Duration; 4] = [
+        Duration::from_secs(1),
+        Duration::from_secs(2),
+        Duration::from_secs(4),
+        Duration::from_secs(8),
+    ];
+
+    /// The total number of identity-readiness probes [`dial_workload`]
+    /// makes (the initial attempt plus `WORKLOAD_DIAL_BACKOFF.len()`
+    /// retries) before giving up.
+    const WORKLOAD_DIAL_MAX_ATTEMPTS: usize = WORKLOAD_DIAL_BACKOFF.len() + 1;
+
+    /// Calls `probe` repeatedly, retrying per [`WORKLOAD_DIAL_BACKOFF`] (via
+    /// `tokio::time::sleep`, so tests can drive this deterministically
+    /// with a paused Tokio time source — see this module's tests) as long
+    /// as it keeps failing with `WorkloadApiError::NoIdentityIssued`.
+    /// Returns `Ok(())` as soon as `probe` succeeds, a
+    /// [`ClientError::WorkloadProbe`] on the first error that isn't "no
+    /// identity issued", or a [`ClientError::WorkloadNoIdentityIssued`]
+    /// naming the last such failure once `WORKLOAD_DIAL_MAX_ATTEMPTS` is
+    /// exhausted.
+    async fn retry_until_identity_issued<F, Fut>(
+        socket_path: &str,
+        mut probe: F,
+    ) -> Result<(), ClientError>
+    where
+        F: FnMut() -> Fut,
+        Fut: Future<Output = Result<(), spiffe::WorkloadApiError>>,
+    {
+        let mut last_err: Option<spiffe::WorkloadApiError> = None;
+        // The delay to sleep *before* each attempt: none before the first
+        // (probe immediately), then one entry per retry per
+        // WORKLOAD_DIAL_BACKOFF. This yields exactly
+        // WORKLOAD_DIAL_MAX_ATTEMPTS items, so the loop below never needs
+        // to index WORKLOAD_DIAL_BACKOFF by a separately tracked attempt
+        // counter.
+        let delays_before_each_attempt =
+            std::iter::once(None).chain(WORKLOAD_DIAL_BACKOFF.into_iter().map(Some));
+
+        for delay in delays_before_each_attempt {
+            if let Some(delay) = delay {
+                tokio::time::sleep(delay).await;
+            }
+            match probe().await {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    if !matches!(e, spiffe::WorkloadApiError::NoIdentityIssued) {
+                        return Err(ClientError::WorkloadProbe {
+                            socket: socket_path.to_string(),
+                            source: e,
+                        });
+                    }
+                    last_err = Some(e);
+                }
+            }
+        }
+        Err(ClientError::WorkloadNoIdentityIssued {
+            socket: socket_path.to_string(),
+            attempts: WORKLOAD_DIAL_MAX_ATTEMPTS,
+            source: last_err
+                .expect("loop always records last_err before exhausting WORKLOAD_DIAL_MAX_ATTEMPTS"),
+        })
+    }
+
+    /// Probes the Workload API at `socket_path` with a single-shot,
+    /// non-watching fetch — see [`dial_workload`]'s doc comment for why a
+    /// plain `fetch_x509_context` call, and not `X509Source::builder()`, is
+    /// used here.
+    async fn probe_identity_issued(socket_path: &str) -> Result<(), spiffe::WorkloadApiError> {
+        let client = spiffe::WorkloadApiClient::connect_to(socket_path).await?;
+        client.fetch_x509_context().await?;
+        Ok(())
+    }
 
     /// Opens a gRPC connection to signet's workload listener, authenticating
     /// via SPIFFE mTLS.
@@ -292,6 +459,43 @@ mod workload {
     /// of `trust_domain`, mirroring Go's
     /// `tlsconfig.AuthorizeMemberOf` — connecting to a server whose identity
     /// is outside that trust domain fails the handshake.
+    ///
+    /// `dial_workload` retries automatically — no opt-in required — if the
+    /// Workload API reports "no identity issued" before it can hand back a
+    /// connection. This is a real, verified-in-production race, not
+    /// speculative hardening: SPIRE's controller-manager reconciles a
+    /// brand-new pod's SPIFFE identity registration reactively, off the
+    /// pod's own creation event, and that registration takes a few seconds
+    /// to propagate from there to the node-local SPIRE agent this dials
+    /// over `socket_path`. A freshly-created pod's very first
+    /// `dial_workload` call — a Job's is the sharpest case, since a Job has
+    /// no prior pod that might have already won this race for the same
+    /// ServiceAccount — can lose it outright and see "no identity issued"
+    /// even though the identity shows up moments later. See
+    /// bytepunx/signet-clients#33 for the full writeup, including where
+    /// this was first hit (bytepunx/kluster's RabbitMQ
+    /// credential-provisioning Job).
+    ///
+    /// The retry makes up to `WORKLOAD_DIAL_MAX_ATTEMPTS` (5) attempts total
+    /// — the initial attempt plus up to 4 retries — backing off per
+    /// `WORKLOAD_DIAL_BACKOFF` (1s, 2s, 4s, 8s) between them. Only the "no
+    /// identity issued" failure is retried: every other error (a bad
+    /// `socket_path`, a malformed `trust_domain`, a genuine authorization
+    /// problem once identity issuance is actually broken rather than merely
+    /// delayed, ...) is returned to the caller immediately, unretried, so
+    /// this never masks a real misconfiguration as a transient blip. The
+    /// retry probes with a single-shot, non-watching
+    /// `WorkloadApiClient::fetch_x509_context` call rather than the
+    /// long-lived `X509Source` constructor used below, deliberately:
+    /// `X509Source`'s own initial sync already retries transient Workload
+    /// API failures forever with its own internal, unbounded, unobservable
+    /// backoff, which would silently absorb the exact "no identity issued"
+    /// signal this retry needs to see and pace itself against. Once the
+    /// probe confirms identity is issued, constructing the real
+    /// `X509Source` below establishes near-instantly in the common case;
+    /// its own internal retry remains as a safety net for any further
+    /// transient hiccup, but the race this function exists to close has
+    /// already been won by the probe.
     ///
     /// The returned [`Channel`] is backed by a live `spiffe::X509Source`
     /// that keeps rotating its SVID/trust bundle in the background for the
@@ -307,6 +511,8 @@ mod workload {
         let addr = addr.as_ref().to_string();
         let socket_path = socket_path.as_ref().to_string();
         let trust_domain = trust_domain.as_ref().to_string();
+
+        retry_until_identity_issued(&socket_path, || probe_identity_issued(&socket_path)).await?;
 
         let source = spiffe::X509Source::builder()
             .endpoint(&socket_path)
@@ -417,6 +623,159 @@ mod workload {
             })
         }
     }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        fn no_identity_issued() -> spiffe::WorkloadApiError {
+            spiffe::WorkloadApiError::NoIdentityIssued
+        }
+
+        fn permission_denied(msg: &str) -> spiffe::WorkloadApiError {
+            spiffe::WorkloadApiError::PermissionDenied(msg.to_string())
+        }
+
+        #[test]
+        fn workload_dial_backoff_matches_verified_kluster_schedule() {
+            // The exact schedule kluster's hand-rolled retry loop verified
+            // working before this was moved into the library (see
+            // bytepunx/signet-clients#33).
+            assert_eq!(
+                WORKLOAD_DIAL_BACKOFF,
+                [
+                    Duration::from_secs(1),
+                    Duration::from_secs(2),
+                    Duration::from_secs(4),
+                    Duration::from_secs(8),
+                ]
+            );
+            assert_eq!(WORKLOAD_DIAL_MAX_ATTEMPTS, 5);
+        }
+
+        #[tokio::test]
+        async fn retry_until_identity_issued_succeeds_immediately() {
+            let calls = Arc::new(AtomicUsize::new(0));
+            let calls_probe = calls.clone();
+
+            let result = retry_until_identity_issued("unix:///test.sock", move || {
+                let calls = calls_probe.clone();
+                async move {
+                    calls.fetch_add(1, Ordering::SeqCst);
+                    Ok(())
+                }
+            })
+            .await;
+
+            assert!(result.is_ok());
+            assert_eq!(
+                calls.load(Ordering::SeqCst),
+                1,
+                "a successful first probe must not retry"
+            );
+        }
+
+        #[tokio::test(start_paused = true)]
+        async fn retry_until_identity_issued_retries_no_identity_issued_then_succeeds() {
+            let calls = Arc::new(AtomicUsize::new(0));
+            let calls_probe = calls.clone();
+            let start = tokio::time::Instant::now();
+
+            let result = retry_until_identity_issued("unix:///test.sock", move || {
+                let calls = calls_probe.clone();
+                async move {
+                    let attempt = calls.fetch_add(1, Ordering::SeqCst);
+                    if attempt < 2 {
+                        Err(no_identity_issued())
+                    } else {
+                        Ok(())
+                    }
+                }
+            })
+            .await;
+
+            assert!(result.is_ok());
+            assert_eq!(
+                calls.load(Ordering::SeqCst),
+                3,
+                "expected 2 failed probes then 1 succeeding probe"
+            );
+            // Backoff between attempts 0->1 is 1s and 1->2 is 2s: 3s total,
+            // no more (the loop must stop backing off once probe succeeds).
+            assert_eq!(start.elapsed(), Duration::from_secs(1 + 2));
+        }
+
+        #[tokio::test]
+        async fn retry_until_identity_issued_returns_other_error_immediately_unretried() {
+            let calls = Arc::new(AtomicUsize::new(0));
+            let calls_probe = calls.clone();
+
+            let err = retry_until_identity_issued("unix:///test.sock", move || {
+                let calls = calls_probe.clone();
+                async move {
+                    calls.fetch_add(1, Ordering::SeqCst);
+                    Err(permission_denied("selectors do not match"))
+                }
+            })
+            .await
+            .unwrap_err();
+
+            assert_eq!(
+                calls.load(Ordering::SeqCst),
+                1,
+                "a non-'no identity issued' failure must never be retried"
+            );
+            match err {
+                ClientError::WorkloadProbe { socket, source } => {
+                    assert_eq!(socket, "unix:///test.sock");
+                    assert!(matches!(
+                        source,
+                        spiffe::WorkloadApiError::PermissionDenied(_)
+                    ));
+                }
+                other => panic!("expected ClientError::WorkloadProbe, got {other:?}"),
+            }
+        }
+
+        #[tokio::test(start_paused = true)]
+        async fn retry_until_identity_issued_exhausts_after_five_attempts_with_full_backoff() {
+            let calls = Arc::new(AtomicUsize::new(0));
+            let calls_probe = calls.clone();
+            let start = tokio::time::Instant::now();
+
+            let err = retry_until_identity_issued("unix:///test.sock", move || {
+                let calls = calls_probe.clone();
+                async move {
+                    calls.fetch_add(1, Ordering::SeqCst);
+                    Err(no_identity_issued())
+                }
+            })
+            .await
+            .unwrap_err();
+
+            assert_eq!(
+                calls.load(Ordering::SeqCst),
+                WORKLOAD_DIAL_MAX_ATTEMPTS,
+                "expected exactly WORKLOAD_DIAL_MAX_ATTEMPTS probes when every one fails with no identity issued"
+            );
+            // Full backoff schedule elapses: 1 + 2 + 4 + 8 = 15s.
+            assert_eq!(start.elapsed(), Duration::from_secs(1 + 2 + 4 + 8));
+
+            match err {
+                ClientError::WorkloadNoIdentityIssued {
+                    socket,
+                    attempts,
+                    source,
+                } => {
+                    assert_eq!(socket, "unix:///test.sock");
+                    assert_eq!(attempts, WORKLOAD_DIAL_MAX_ATTEMPTS);
+                    assert!(matches!(source, spiffe::WorkloadApiError::NoIdentityIssued));
+                }
+                other => panic!("expected ClientError::WorkloadNoIdentityIssued, got {other:?}"),
+            }
+        }
+    }
 }
 
 #[cfg(feature = "spiffe-workload")]
@@ -442,20 +801,77 @@ mod tests {
 
     #[test]
     fn admin_transport_decision_loopback_defaults_to_plaintext() {
-        let decision = admin_transport_decision("localhost:8444", None, false).unwrap();
+        let decision = admin_transport_decision("localhost:8444", None, false, false).unwrap();
         assert!(!decision.requires_tls());
     }
 
     #[test]
     fn admin_transport_decision_non_loopback_requires_tls() {
-        let decision = admin_transport_decision("signet.internal:8444", None, false).unwrap();
+        let decision =
+            admin_transport_decision("signet.internal:8444", None, false, false).unwrap();
         assert!(decision.requires_tls());
     }
 
     #[test]
     fn admin_transport_decision_force_tls_on_loopback() {
-        let decision = admin_transport_decision("localhost:8444", None, true).unwrap();
+        let decision = admin_transport_decision("localhost:8444", None, true, false).unwrap();
         assert!(decision.requires_tls());
+    }
+
+    #[test]
+    fn admin_transport_decision_plaintext_overrides_non_loopback() {
+        // The whole point of issue #32: a non-loopback address (e.g. an
+        // in-cluster Service DNS name) that would otherwise be upgraded to
+        // TLS by the loopback heuristic stays plaintext when explicitly
+        // requested.
+        let decision =
+            admin_transport_decision("signet.internal:8444", None, false, true).unwrap();
+        assert!(!decision.requires_tls());
+    }
+
+    #[test]
+    fn admin_transport_decision_plaintext_leaves_loopback_unaffected() {
+        // plaintext on an address that would already default to plaintext
+        // is a no-op, not an error.
+        let decision = admin_transport_decision("localhost:8444", None, false, true).unwrap();
+        assert!(!decision.requires_tls());
+    }
+
+    #[test]
+    fn admin_transport_decision_rejects_force_tls_and_plaintext_together() {
+        let err = admin_transport_decision("localhost:8444", None, true, true).unwrap_err();
+        assert!(
+            matches!(err, ClientError::ForceTlsPlaintextConflict),
+            "expected ClientError::ForceTlsPlaintextConflict, got {err:?}"
+        );
+        assert_eq!(
+            err.to_string(),
+            "force_tls and plaintext are mutually exclusive"
+        );
+    }
+
+    #[test]
+    fn admin_transport_decision_rejects_plaintext_with_ca_pem() {
+        let pem = b"-----BEGIN CERTIFICATE-----\nnot validated at this layer\n-----END CERTIFICATE-----\n";
+        let err = admin_transport_decision("localhost:8444", Some(pem), false, true).unwrap_err();
+        assert!(
+            matches!(err, ClientError::PlaintextCaPemConflict),
+            "expected ClientError::PlaintextCaPemConflict, got {err:?}"
+        );
+        assert_eq!(
+            err.to_string(),
+            "plaintext and ca_pem are mutually exclusive"
+        );
+    }
+
+    #[test]
+    fn admin_transport_decision_plaintext_with_empty_ca_pem_is_not_a_conflict() {
+        // An empty (zero-length) CA slice is treated the same as `None`
+        // throughout this module (see `ca_pem_non_empty` in
+        // `admin_transport_decision`), so it doesn't trip the
+        // plaintext/ca_pem mutual-exclusion check.
+        let decision = admin_transport_decision("localhost:8444", Some(&[]), false, true).unwrap();
+        assert!(!decision.requires_tls());
     }
 
     #[test]
@@ -482,15 +898,16 @@ oWg4npa5Q/5SdfJs3i4GyGRU4NWYxGfgFi7JiHOZx8t2Nv0RJkYqQu1SMNq97IDo\n\
 ezQtmgLYbjPG41WWrdNT76h1mJgtlCzH0DfI7lQTBIi9AuE5poxPQiBoaC7flMsV\n\
 w8cAzA==\n\
 -----END CERTIFICATE-----\n";
-        let decision = admin_transport_decision("localhost:8444", Some(pem), false);
+        let decision = admin_transport_decision("localhost:8444", Some(pem), false, false);
         assert!(decision.is_ok());
         assert!(decision.unwrap().requires_tls());
     }
 
     #[test]
     fn admin_transport_decision_rejects_invalid_ca_pem() {
-        let err = admin_transport_decision("signet.internal:8444", Some(b"not a cert"), false)
-            .unwrap_err();
+        let err =
+            admin_transport_decision("signet.internal:8444", Some(b"not a cert"), false, false)
+                .unwrap_err();
         assert!(
             matches!(err, ClientError::InvalidCaPem),
             "expected ClientError::InvalidCaPem, got {err:?}"
@@ -500,7 +917,7 @@ w8cAzA==\n\
 
     #[tokio::test]
     async fn dial_admin_rejects_empty_token() {
-        let err = dial_admin("localhost:8444", "   ", None, false)
+        let err = dial_admin("localhost:8444", "   ", None, false, false)
             .await
             .unwrap_err();
         assert!(matches!(err, ClientError::EmptyToken));
