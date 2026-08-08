@@ -8,7 +8,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { PeerCertificate } from "node:tls";
-import { authorizeTrustDomainMember, derToPem } from "./workload.js";
+import {
+  authorizeTrustDomainMember,
+  derToPem,
+  isNoIdentityIssuedErr,
+  retryUntilIdentityIssued,
+  workloadDialBackoffMs,
+  workloadDialMaxAttempts,
+} from "./workload.js";
 
 function fakeCert(subjectaltname: string | undefined): PeerCertificate {
   return { subjectaltname } as PeerCertificate;
@@ -83,4 +90,117 @@ test("derToPem wraps base64 with the given PEM label and 64-column lines", () =>
 
   const roundTripped = Buffer.from(body.join(""), "base64");
   assert.ok(roundTripped.equals(der), "expected base64 round-trip to reproduce the original DER bytes");
+});
+
+// ---------------------------------------------------------------------------
+// Identity-issuance retry (bytepunx/signet-clients#33)
+//
+// Ports every case in go-client-admin-plaintext-workload-retry's
+// go/client_test.go retry coverage. fakeSleep records the durations
+// retryUntilIdentityIssued asks it to wait, without actually blocking, so
+// the full-schedule test runs in milliseconds rather than ~15s of real
+// waiting.
+// ---------------------------------------------------------------------------
+
+/** Shape of the RpcError @protobuf-ts/grpc-transport throws for a gRPC failure. */
+function noIdentityIssuedErr(): Error {
+  return Object.assign(new Error("no identity issued"), { code: "PERMISSION_DENIED" });
+}
+
+function unavailableErr(): Error {
+  return Object.assign(new Error("connection refused"), { code: "UNAVAILABLE" });
+}
+
+function fakeSleep(): { sleep: (ms: number) => Promise<void>; waited: number[] } {
+  const waited: number[] = [];
+  return {
+    waited,
+    sleep: async (ms: number) => {
+      waited.push(ms);
+    },
+  };
+}
+
+test("isNoIdentityIssuedErr classifies a PERMISSION_DENIED RpcError-shaped error as true", () => {
+  assert.equal(isNoIdentityIssuedErr(noIdentityIssuedErr()), true);
+});
+
+test("isNoIdentityIssuedErr classifies a PERMISSION_DENIED error with different text as true", () => {
+  assert.equal(
+    isNoIdentityIssuedErr(Object.assign(new Error("go away"), { code: "PERMISSION_DENIED" })),
+    true,
+  );
+});
+
+test("isNoIdentityIssuedErr rejects other gRPC status codes", () => {
+  assert.equal(isNoIdentityIssuedErr(unavailableErr()), false);
+  assert.equal(isNoIdentityIssuedErr(Object.assign(new Error("bad request"), { code: "INVALID_ARGUMENT" })), false);
+});
+
+test("isNoIdentityIssuedErr rejects a plain Error with no code field", () => {
+  assert.equal(isNoIdentityIssuedErr(new Error("boom")), false);
+});
+
+test("isNoIdentityIssuedErr rejects non-object values", () => {
+  assert.equal(isNoIdentityIssuedErr(undefined), false);
+  assert.equal(isNoIdentityIssuedErr(null), false);
+  assert.equal(isNoIdentityIssuedErr("boom"), false);
+});
+
+test("retryUntilIdentityIssued succeeds on the first attempt with no sleep", async () => {
+  const { sleep, waited } = fakeSleep();
+  let calls = 0;
+  const probe = async () => {
+    calls++;
+    return "svid";
+  };
+
+  const result = await retryUntilIdentityIssued(probe, sleep);
+
+  assert.equal(result, "svid");
+  assert.equal(calls, 1);
+  assert.deepEqual(waited, []);
+});
+
+test("retryUntilIdentityIssued succeeds after a couple of retries, backing off 1s then 2s", async () => {
+  const { sleep, waited } = fakeSleep();
+  let calls = 0;
+  const probe = async () => {
+    calls++;
+    if (calls < 3) throw noIdentityIssuedErr();
+    return "svid";
+  };
+
+  const result = await retryUntilIdentityIssued(probe, sleep);
+
+  assert.equal(result, "svid");
+  assert.equal(calls, 3);
+  assert.deepEqual(waited, [1000, 2000]);
+});
+
+test("retryUntilIdentityIssued exhausts all attempts with the correct backoff schedule (1s/2s/4s/8s)", async () => {
+  const { sleep, waited } = fakeSleep();
+  let calls = 0;
+  const probe = async () => {
+    calls++;
+    throw noIdentityIssuedErr();
+  };
+
+  await assert.rejects(retryUntilIdentityIssued(probe, sleep), /no identity issued after 5 attempts/);
+  assert.equal(calls, workloadDialMaxAttempts);
+  assert.deepEqual(waited, [...workloadDialBackoffMs]);
+});
+
+test("retryUntilIdentityIssued does not retry an unrelated error", async () => {
+  const { sleep, waited } = fakeSleep();
+  let calls = 0;
+  const wantErr = unavailableErr();
+  const probe = async () => {
+    calls++;
+    throw wantErr;
+  };
+
+  await assert.rejects(retryUntilIdentityIssued(probe, sleep), (err: unknown) => err === wantErr);
+  assert.equal(calls, 1);
+  assert.deepEqual(waited, []);
 });

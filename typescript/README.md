@@ -56,6 +56,21 @@ which would otherwise break the plaintext-loopback dev workflow that Go's client
 `PerRPCCredentials.RequireTransportSecurity() == false`. See `authInterceptor` in
 `src/client.ts`.
 
+`plaintext: true` forces insecure transport credentials even for a **non-loopback** address,
+bypassing the loopback heuristic entirely (bytepunx/signet-clients#32). This is required once
+signet exposes a real in-cluster admin listener (bytepunx/signet#19): dialing that Service by
+its cluster-DNS name is a non-loopback address, but the listener is intentionally still
+plaintext-behind-bearer-token, not TLS-terminated — without `plaintext`, the loopback
+heuristic would pick TLS and the handshake would fail immediately ("wrong version number")
+against a server that never speaks TLS on that listener. Per-RPC bearer-token authentication
+is unaffected either way. `plaintext` is mutually exclusive with `forceTLS` and with a
+non-empty `caPem`; `dialAdmin`/`gitOpsClient`/`adminChannelCredentials` throw if either
+combination is requested. Matches the Go client's `DialAdmin` `plaintext` parameter exactly.
+
+```ts
+const admin = dialAdmin({ address: "signet-admin.signet.svc.cluster.local:8444", token, plaintext: true });
+```
+
 ### Workload access (SecretsService, SPIFFE mTLS)
 
 ```ts
@@ -77,6 +92,26 @@ try {
 }
 ```
 
+`dialWorkload` retries automatically — no opt-in required — if the Workload API reports "no
+identity issued" before it can hand back a connection (bytepunx/signet-clients#33). SPIRE's
+controller-manager reconciles a brand-new pod's SPIFFE identity registration reactively, off
+the pod's own creation event, and that registration takes a few seconds to propagate from
+there to the node-local SPIRE agent `dialWorkload` dials over `workloadSocket`. A
+freshly-created pod's very first `dialWorkload` call — a Job's is the sharpest case, since a
+Job has no prior pod that might have already won this race for the same ServiceAccount — can
+lose it outright and see "no identity issued" even though the identity shows up moments
+later. This is the same race first hit (and hand-rolled around) in
+[bytepunx/kluster](https://github.com/bytepunx/kluster)'s RabbitMQ credential-provisioning
+Job; the fix now lives here instead, matching the [Go client](../go)'s `DialWorkload`.
+
+The retry makes up to 5 attempts total — the initial attempt plus up to 4 retries — backing
+off 1s, 2s, 4s, 8s between them. Only the "no identity issued" failure (a `PERMISSION_DENIED`
+status from the Workload API) is retried: every other error (a bad `workloadSocket`, a
+malformed `trustDomain`, a genuine authorization problem once identity issuance is actually
+broken rather than merely delayed, ...) is returned to the caller immediately, unretried, so
+this never masks a real misconfiguration as a transient blip. See `retryUntilIdentityIssued`
+and `isNoIdentityIssuedErr` in `src/workload.ts`.
+
 #### The SPIFFE gap (please read before relying on this in production)
 
 Go's client builds on [`go-spiffe`](https://github.com/spiffe/go-spiffe), a mature, official
@@ -97,6 +132,19 @@ authorization.
 Workload API's UDS/gRPC/protobuf protocol, which would otherwise mean hand-rolling a
 non-trivial wire protocol), and this library fills in the two pieces `go-spiffe` normally
 provides for free:
+
+**A consequence for the #33 retry above:** go-spiffe exposes two distinct primitives —
+`FetchX509Context`, a single-shot, non-watching probe, and `NewX509Source`, a separate
+long-lived, internally-self-retrying source — so Go's `DialWorkload` probes readiness with
+the former before establishing the real connection via the latter (probing with a
+self-retrying source directly would mask the very error the retry needs to classify). `spiffe`
+has no long-lived/background-rotating equivalent of `NewX509Source` at all — every
+`fetchX509SVID` call is already a single-shot, non-watching fetch, identical in kind to
+`FetchX509Context`. So here, unlike Go, there's only one primitive to retry: the probe and the
+real fetch are the same operation. `retryUntilIdentityIssued` wraps the SVID fetch directly and
+its result becomes the connection's credentials, rather than probing once and re-fetching
+through a second, differently-shaped call. The externally observable behavior — 5 attempts,
+1s/2s/4s/8s backoff, retrying only "no identity issued" — is unchanged.
 
 - **Credential construction** (`credentialsFromSVID` in `src/workload.ts`): converts the
   fetched DER cert chain, private key, and trust bundle to PEM and builds `@grpc/grpc-js`
@@ -206,7 +254,7 @@ npm run build && npm test
 ```
 
 `npm test` runs `node --test dist/**/*.test.js` — Node's built-in test runner, against
-compiled output (kept as-is from the original scaffold). 35 test cases across three files,
+compiled output (kept as-is from the original scaffold). 52 test cases across three files,
 all driven against hand-written fakes implementing narrow `LockStream`/`WatchStream`
 interfaces (mirroring `go/restart_test.go`'s fake-based pattern) — no live network connection
 or signet instance is used anywhere:
@@ -221,18 +269,30 @@ or signet instance is used anywhere:
   eventually delivers a change. Plus cases beyond the Go set: a failing (rejecting) `open()`
   is treated the same as a mid-stream error; `AbortSignal` cancellation while waiting to
   acquire a lock, and while watching for changes, is honored promptly rather than hanging.
-- **`src/client.test.ts`** (14 cases) — every case in `go/client_test.go`, ported:
+- **`src/client.test.ts`** (20 cases) — every case in `go/client_test.go`, ported:
   `isLoopbackHost` table; loopback-defaults-to-plaintext / non-loopback-requires-TLS /
   `forceTLS`-forces-TLS-on-loopback; empty/whitespace token rejected with a clear message;
   invalid CA PEM produces a clear parse error, not a raw OpenSSL exception (including a
   syntactically-present-but-malformed PEM block, which Go's suite doesn't separately cover).
   Plus `authInterceptor` coverage specific to this port's design (see the admin-access
-  section above for why it exists).
-- **`src/workload.test.ts`** (9 cases) — `authorizeTrustDomainMember` (the
+  section above for why it exists), and the `plaintext` override coverage for
+  bytepunx/signet-clients#32: overrides TLS on a non-loopback address, is a no-op (still
+  plaintext) on loopback, leaves existing behavior unchanged when omitted, and is rejected
+  when combined with `forceTLS` or `caPem`, at both the `adminTransportMode` and `dialAdmin`
+  entry points.
+- **`src/workload.test.ts`** (18 cases) — `authorizeTrustDomainMember` (the
   `tlsconfig.AuthorizeMemberOf` reimplementation) against hand-written fake certificates:
   accepts a matching trust domain, rejects a mismatched one, rejects a missing SPIFFE URI
-  SAN, normalizes a `spiffe://` prefix, rejects malformed input up front; plus `derToPem`
-  round-trip coverage.
+  SAN, normalizes a `spiffe://` prefix, rejects malformed input up front; `derToPem`
+  round-trip coverage; and the identity-issuance retry coverage for
+  bytepunx/signet-clients#33, porting every case in `go/client_test.go`'s retry suite:
+  `isNoIdentityIssuedErr` classification (PERMISSION_DENIED in various shapes vs. other
+  codes vs. non-RpcError values), `retryUntilIdentityIssued` succeeding immediately with no
+  sleep, succeeding after a couple of retries with the right partial backoff, exhausting all
+  `workloadDialMaxAttempts` (5) with the full 1s/2s/4s/8s schedule, and passing an unrelated
+  error straight through unretried — all via a fake `sleep` injected in place of the default
+  `setTimeout`-based one, so the full-schedule case runs in under a millisecond instead of
+  ~15s.
 
 The two timing-sensitive tests that must observe real elapsed time (the default heartbeat
 interval, and one coalescing test) use real timers and take ~200ms–1.3s each; every
