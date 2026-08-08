@@ -122,4 +122,63 @@ public class AdminConnectionTests
             () => SignetConnect.DialAdmin("signet.internal:8444", "test-token", bad));
         Assert.Contains("no PEM certificates found", ex.Message);
     }
+
+    // --- plaintext override (bytepunx/signet-clients#32) ---
+
+    [Fact]
+    public void Resolve_PlaintextForcesPlaintextOnNonLoopback()
+    {
+        // The whole point of #32: a non-loopback address (e.g. an in-cluster Service DNS name)
+        // would otherwise be upgraded to TLS by the loopback heuristic.
+        var resolved = AdminTransport.Resolve("signet.internal:8444", null, forceTls: false, plaintext: true);
+        Assert.False(resolved.UseTls, "expected plaintext to be forced for a non-loopback address");
+        Assert.Null(resolved.Handler);
+    }
+
+    [Fact]
+    public void Resolve_PlaintextFalse_LoopbackBehaviorUnchanged()
+    {
+        var resolved = AdminTransport.Resolve("localhost:8444", null, forceTls: false, plaintext: false);
+        Assert.False(resolved.UseTls, "loopback default should be unaffected by the new plaintext parameter");
+    }
+
+    [Fact]
+    public void Resolve_PlaintextFalse_NonLoopbackBehaviorUnchanged()
+    {
+        var resolved = AdminTransport.Resolve("signet.internal:8444", null, forceTls: false, plaintext: false);
+        Assert.True(resolved.UseTls, "non-loopback default should be unaffected by the new plaintext parameter");
+    }
+
+    [Fact]
+    public void Resolve_PlaintextAndForceTls_ThrowsArgumentException()
+    {
+        var ex = Assert.Throws<ArgumentException>(
+            () => AdminTransport.Resolve("signet.internal:8444", null, forceTls: true, plaintext: true));
+        Assert.Contains("mutually exclusive", ex.Message);
+    }
+
+    [Fact]
+    public void Resolve_PlaintextAndCaPem_ThrowsArgumentException()
+    {
+        var pem = GenerateSelfSignedCaPem();
+        var ex = Assert.Throws<ArgumentException>(
+            () => AdminTransport.Resolve("signet.internal:8444", pem, forceTls: false, plaintext: true));
+        Assert.Contains("mutually exclusive", ex.Message);
+    }
+
+    [Fact]
+    public void DialAdmin_PlaintextOnNonLoopback_ConstructsHttpChannelWithoutThrowing()
+    {
+        using var conn = SignetConnect.DialAdmin("signet.internal:8444", "test-token", plaintext: true);
+        Assert.NotNull(conn.AdminClient);
+        Assert.NotNull(conn.GitOpsClient);
+    }
+
+    [Fact]
+    public void DialAdmin_PlaintextAndForceTls_ThrowsBeforeTouchingNetwork()
+    {
+        var ex = Assert.Throws<ArgumentException>(
+            () => SignetConnect.DialAdmin("signet.internal:8444", "test-token", forceTls: true, plaintext: true));
+        Assert.Contains("mutually exclusive", ex.Message);
+    }
 }

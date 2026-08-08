@@ -74,6 +74,19 @@ var resp = await client.GetSecretAsync(new GetSecretRequest
 });
 ```
 
+`DialWorkloadAsync` retries automatically — no opt-in required — if it loses the race against
+SPIRE's identity-registration propagation: a brand-new pod's (a freshly-created Job's is the
+sharpest case) very first dial can see "no identity issued" from the Workload API even though
+the identity shows up moments later, since SPIRE's controller-manager reconciles the pod's
+SPIFFE identity registration reactively and that takes a few seconds to propagate to the
+node-local agent. `DialWorkloadAsync` probes readiness first with a single-shot fetch, retrying
+up to 5 attempts total with 1s/2s/4s/8s backoff, but only for that specific failure — any other
+error (bad `socketPath`, invalid trust domain, a genuine authorization problem, ...) is returned
+immediately, unretried. See bytepunx/signet-clients#33 and `WorkloadDialRetry`'s doc comments in
+`WorkloadConnection.cs` for the full writeup, including why the long-lived `X509Source` alone
+can't be used to implement this (its own internal watch retries the same failure forever with an
+uncontrollable backoff, masking it).
+
 ### Operator access (AdminService/GitOpsService, bearer token)
 
 ```csharp
@@ -86,7 +99,14 @@ var status = await admin.StatusAsync(new StatusRequest());
 `DialAdmin` mirrors Go's exact TLS-selection logic: loopback addresses (the documented
 `kubectl port-forward` workflow) default to plaintext; every other address is upgraded to TLS
 automatically using the system trust store, or a caller-supplied CA bundle; `forceTls: true`
-requests TLS even for a loopback address.
+requests TLS even for a loopback address. `plaintext: true` forces insecure transport
+credentials even for a non-loopback address, bypassing the loopback heuristic entirely — needed
+once signet exposes a real in-cluster admin listener (bytepunx/signet#19): dialing that Service
+by its cluster-DNS name is a non-loopback address, but the listener is intentionally still
+plaintext-behind-bearer-token, not TLS-terminated. Per-RPC bearer-token authentication is
+unaffected either way. `forceTls` and `plaintext` are mutually exclusive with each other, and
+`plaintext` is mutually exclusive with a non-empty CA bundle — `DialAdmin` throws an
+`ArgumentException` for either combination. See bytepunx/signet-clients#32.
 
 ### Coordinated restarts (no process host, no environment injection)
 
@@ -165,3 +185,13 @@ ice — `DialAdmin`, `WatchBundleAsync`, `AcquireLockAsync`, and `WaitForRestart
 SPIFFE dependency whatsoever and work against any `Grpc.Net.Client.GrpcChannel`, including one a
 caller constructs by hand (e.g. against a self-managed mTLS setup) without going through
 `DialWorkloadAsync` at all.
+
+Despite that maturity gap, `Spiffe` turned out to expose exactly the primitives
+`DialWorkloadAsync`'s SPIRE-registration-propagation retry (bytepunx/signet-clients#33, described
+above) needs: `IWorkloadApiClient.FetchX509ContextAsync` is a genuine single-shot, non-watching
+fetch that surfaces the raw gRPC status on failure, distinct from the long-lived
+`WatchX509ContextAsync`-backed `X509Source` — the same split Go's `go-spiffe` offers between
+`workloadapi.FetchX509Context` and `workloadapi.NewX509Source`. So unlike Python's workload-mTLS
+gap (`python/README.md`), which blocks `dial_workload` outright because `grpc-python` has no
+public API to validate a SPIFFE-URI-SAN-only server certificate, this retry didn't require a
+documented gap or a fragile workaround — the library genuinely supports it.
