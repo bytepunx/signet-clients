@@ -50,6 +50,57 @@ test("adminTransportMode requires TLS when a CA bundle is supplied, even on loop
   assert.equal(useTLS, true);
 });
 
+// ---------------------------------------------------------------------------
+// plaintext override (bytepunx/signet-clients#32)
+// ---------------------------------------------------------------------------
+
+test("adminTransportMode: plaintext overrides TLS for a non-loopback address", () => {
+  const { useTLS } = adminTransportMode("signet.internal:8444", undefined, false, true);
+  assert.equal(useTLS, false);
+});
+
+test("adminTransportMode: plaintext on a loopback address is still plaintext (redundant but harmless)", () => {
+  const { useTLS } = adminTransportMode("localhost:8444", undefined, false, true);
+  assert.equal(useTLS, false);
+});
+
+test("adminTransportMode: omitting plaintext leaves existing loopback/forceTLS behavior unchanged", () => {
+  assert.equal(adminTransportMode("localhost:8444", undefined, false).useTLS, false);
+  assert.equal(adminTransportMode("signet.internal:8444", undefined, false).useTLS, true);
+  assert.equal(adminTransportMode("localhost:8444", undefined, true).useTLS, true);
+});
+
+test("adminTransportMode: forceTLS and plaintext are mutually exclusive", () => {
+  assert.throws(
+    () => adminTransportMode("signet.internal:8444", undefined, true, true),
+    /forceTLS and plaintext are mutually exclusive/,
+  );
+});
+
+test("adminTransportMode: plaintext and caPem are mutually exclusive", () => {
+  assert.throws(
+    () => adminTransportMode("signet.internal:8444", "-----BEGIN CERTIFICATE-----\n...", false, true),
+    /plaintext and caPem are mutually exclusive/,
+  );
+});
+
+test("adminChannelCredentials: plaintext produces insecure credentials for a non-loopback address", () => {
+  const creds = adminChannelCredentials({ address: "signet.internal:8444", token: "tok", plaintext: true });
+  assert.equal(creds._isSecure(), false);
+});
+
+test("dialAdmin: plaintext on a non-loopback address constructs without error (no live network involved)", () => {
+  const client = dialAdmin({ address: "signet.internal:8444", token: "tok", plaintext: true });
+  client.close();
+});
+
+test("dialAdmin: forceTLS and plaintext together is rejected at the dialAdmin entry point too", () => {
+  assert.throws(
+    () => dialAdmin({ address: "localhost:8444", token: "tok", forceTLS: true, plaintext: true }),
+    /forceTLS and plaintext are mutually exclusive/,
+  );
+});
+
 test("adminChannelCredentials rejects an empty or whitespace-only token with a clear message", () => {
   assert.throws(
     () => adminChannelCredentials({ address: "localhost:8444", token: "  " }),
