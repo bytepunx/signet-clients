@@ -36,7 +36,7 @@ No optional feature required.
 ```rust
 use signet_client::{admin_client, dial_admin};
 
-let channel = dial_admin("localhost:8444", token, None, false).await?;
+let channel = dial_admin("localhost:8444", token, None, false, false).await?;
 let mut admin = admin_client(channel);
 let status = admin.status(signet_client::admin::v1::StatusRequest {}).await?;
 ```
@@ -44,9 +44,21 @@ let status = admin.status(signet_client::admin::v1::StatusRequest {}).await?;
 `dial_admin` mirrors the Go client's `DialAdmin` exactly: loopback addresses (the
 documented `kubectl port-forward` workflow) default to plaintext; every other address is
 upgraded to TLS automatically using the system trust store, or the CA in `ca_pem` if
-provided; `force_tls` requests TLS even for a loopback address. An empty/whitespace-only
-token is rejected before any connection attempt, and an invalid CA PEM bundle produces a
-specific parse error rather than a generic one.
+provided. Two boolean parameters override that heuristic, in opposite directions:
+`force_tls` requests TLS even for a loopback address, and `plaintext` forces insecure
+transport credentials even for a *non*-loopback address, bypassing the heuristic entirely.
+`plaintext` exists for dialing a real in-cluster admin listener
+([bytepunx/signet#19](https://github.com/bytepunx/signet/issues/19)) by its cluster-DNS
+name — a non-loopback address that's nonetheless intentionally plaintext-behind-bearer-token
+rather than TLS-terminated, so without `plaintext` the loopback heuristic would pick TLS and
+the handshake would fail immediately ("wrong version number") — see
+[bytepunx/signet-clients#32](https://github.com/bytepunx/signet-clients/issues/32).
+Per-RPC bearer-token authentication is unaffected either way. `force_tls` and `plaintext`
+are mutually exclusive with each other, and `plaintext` is mutually exclusive with a
+non-empty `ca_pem`; `dial_admin` returns a specific `ClientError` variant for either
+conflict rather than a generic one. An empty/whitespace-only token is rejected before any
+connection attempt, and an invalid CA PEM bundle produces a specific parse error rather
+than a generic one.
 
 ### Workload access (`SecretsService`, SPIFFE mTLS) — `spiffe-workload` feature
 
@@ -199,7 +211,7 @@ cargo test
 Every test runs against hand-written fakes (implementing the same internal
 `LockStream`/`WatchStream` traits the real `tonic`-backed streams implement) — no live
 network connection or signet instance required, mirroring the fake-based pattern in
-`../go/restart_test.go`. 24 unit tests plus a doctest cover:
+`../go/restart_test.go`. 29 unit tests plus a doctest cover:
 
 - `acquire_lock` rejects `ttl <= 0` with a specific `RestartError::InvalidTtl`, before ever
   opening a stream (and `validate_ttl`'s whole-second truncation/flooring is tested
@@ -224,7 +236,11 @@ network connection or signet instance required, mirroring the fake-based pattern
 - `dial_admin`/`admin_transport_decision`: empty/whitespace-only token rejected; loopback
   address defaults to plaintext; non-loopback address requires TLS; `force_tls` upgrades a
   loopback address; a CA PEM bundle forces TLS even on loopback; an invalid CA PEM bundle
-  produces a specific `ClientError::InvalidCaPem`/`CaPemParse`, not a generic error.
+  produces a specific `ClientError::InvalidCaPem`/`CaPemParse`, not a generic error;
+  `plaintext` overrides a non-loopback address back to plaintext and is a no-op on an
+  already-plaintext loopback address; `force_tls`+`plaintext` and `plaintext`+non-empty
+  `ca_pem` each produce their own specific conflict error (an empty `ca_pem` slice doesn't
+  trip the latter).
 
 Two tests go beyond the Go suite, surfaced by porting the design into Rust's ownership
 model: `lost_is_none_immediately_after_acquire` (a caller polling `Lock::lost()` rather than
