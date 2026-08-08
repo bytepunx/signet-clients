@@ -3,7 +3,9 @@
 Mirrors the Go client's ``DialAdmin``: bearer-token auth over TLS, with
 plaintext allowed only for loopback addresses (the documented
 ``kubectl port-forward`` workflow), matching signet's own ``signet`` CLI.
-This module has no SPIFFE dependency.
+``plaintext=True`` overrides that heuristic to force plaintext for any
+address, not just loopback ones — see ``dial_admin``'s docstring. This
+module has no SPIFFE dependency.
 """
 
 from __future__ import annotations
@@ -38,25 +40,56 @@ def dial_admin(
     token: str,
     ca_pem: Optional[bytes] = None,
     force_tls: bool = False,
+    plaintext: bool = False,
     **channel_kwargs,
 ) -> grpc.Channel:
     """Opens a gRPC channel to signet's admin listener, injecting ``token``
     as a bearer credential on every outgoing RPC.
 
-    Loopback addresses (``localhost``, ``127.0.0.1``, ``::1``, ...) use
-    plaintext by default; every other address is upgraded to TLS
-    automatically, using the system trust store unless ``ca_pem`` is given.
-    ``force_tls`` requests TLS even for a loopback address.
+    Transport security is chosen automatically from ``addr``: loopback
+    addresses (``localhost``, ``127.0.0.1``, ``::1``, ...) use plaintext by
+    default (the documented ``kubectl port-forward`` workflow); every other
+    address is upgraded to TLS automatically, using the system trust store
+    unless ``ca_pem`` is given.
+
+    ``force_tls`` and ``plaintext`` both override that heuristic, in
+    opposite directions:
+
+    * ``force_tls`` requests TLS even for a loopback address (e.g. testing
+      a real TLS-terminating proxy locally).
+    * ``plaintext`` forces insecure transport credentials even for a
+      non-loopback address, bypassing the loopback heuristic entirely. This
+      is required once signet exposes a real in-cluster admin listener
+      (bytepunx/signet#19): dialing that Service by its cluster-DNS name is
+      a non-loopback address, but the listener is intentionally still
+      plaintext-behind-bearer-token, not TLS-terminated — without
+      ``plaintext``, the loopback heuristic would pick TLS and the
+      handshake would fail immediately ("wrong version number") against a
+      server that never speaks TLS on that listener. See
+      bytepunx/signet-clients#32.
+
+    Per-RPC bearer-token authentication is unaffected either way —
+    ``plaintext`` only changes the transport, never who signet trusts the
+    caller to be.
+
+    ``force_tls`` and ``plaintext`` are mutually exclusive with each other,
+    and ``plaintext`` is mutually exclusive with a non-empty ``ca_pem``
+    (there is no meaningful CA to verify against when the transport isn't
+    TLS at all).
 
     Raises:
-        ValueError: if ``token`` is empty or whitespace-only.
+        ValueError: if ``token`` is empty or whitespace-only, or if
+            ``force_tls`` and ``plaintext`` are both set, or if
+            ``plaintext`` and ``ca_pem`` are both set.
         SignetError: if ``ca_pem`` is provided but contains no parseable PEM
             certificates.
     """
     if not token or not token.strip():
         raise ValueError("signet: token must not be empty")
 
-    creds, require_tls = _admin_transport_credentials(addr, ca_pem, force_tls)
+    creds, require_tls = _admin_transport_credentials(
+        addr, ca_pem, force_tls, plaintext
+    )
     interceptor = _BearerTokenInterceptor(token.strip())
 
     if require_tls:
@@ -84,8 +117,18 @@ def read_ca_file(path: str) -> bytes:
 
 
 def _admin_transport_credentials(
-    addr: str, ca_pem: Optional[bytes], force_tls: bool
+    addr: str,
+    ca_pem: Optional[bytes],
+    force_tls: bool,
+    plaintext: bool = False,
 ) -> Tuple[Optional[grpc.ChannelCredentials], bool]:
+    if plaintext and force_tls:
+        raise ValueError("signet: force_tls and plaintext are mutually exclusive")
+    if plaintext and ca_pem:
+        raise ValueError("signet: plaintext and ca_pem are mutually exclusive")
+    if plaintext:
+        return None, False
+
     host = _split_host(addr)
     use_tls = force_tls or bool(ca_pem) or not is_loopback_host(host)
 

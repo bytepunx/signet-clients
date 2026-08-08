@@ -64,6 +64,21 @@ automatically, using the system trust store unless a CA bundle is passed. Pass
 `force_tls=True` to require TLS even for a loopback address, or `ca_pem=read_ca_file(path)`
 to pin a specific CA.
 
+Pass `plaintext=True` to force insecure transport credentials even for a **non-loopback**
+address, bypassing the loopback heuristic entirely — this is what you need once signet
+exposes a real in-cluster admin listener ([bytepunx/signet#19](https://github.com/bytepunx/signet/issues/19)):
+dialing that Service by its cluster-DNS name is a non-loopback address, but the listener
+is intentionally still plaintext-behind-bearer-token, not TLS-terminated. Without
+`plaintext=True`, the loopback heuristic picks TLS and the handshake fails immediately
+("wrong version number") against a server that never speaks TLS on that listener. Per-RPC
+bearer-token authentication is unaffected either way. `plaintext` is mutually exclusive
+with `force_tls` and with a non-empty `ca_pem` — `dial_admin` raises `ValueError` for
+either combination. See [bytepunx/signet-clients#32](https://github.com/bytepunx/signet-clients/issues/32).
+
+This fix applies to `dial_admin` only. Python's `dial_workload` (SPIFFE mTLS) remains
+separately broken per [#14](https://github.com/bytepunx/signet-clients/issues/14) — see
+[SPIFFE support](#spiffe-support) below — and is unaffected by this change.
+
 Implementation note: the bearer token is injected via a `grpc` client interceptor
 rather than `grpc.CallCredentials`. grpc-python's call-credentials machinery refuses to
 attach to a plaintext channel (there's no public equivalent of Go's
@@ -204,7 +219,7 @@ pytest
 (`[workload]` is only needed to also exercise `tests/test_workload.py`'s
 credential-building path; the rest of the suite has no dependency on it.)
 
-60 test cases, all synchronous and driven against hand-written fakes implementing the
+67 test cases, all synchronous and driven against hand-written fakes implementing the
 same narrow `LockStream`/`WatchStream` protocols the state machines depend on (see
 `tests/fakes.py`) — no live network connection or signet instance anywhere in the
 suite. Coverage includes:
@@ -228,7 +243,9 @@ suite. Coverage includes:
   `acquire_lock` raises.
 - `dial_admin`: empty/whitespace-only token rejected; loopback address defaults to
   plaintext; non-loopback address requires TLS; `force_tls` upgrades a loopback
-  address; invalid CA PEM produces a clear parse-error message (both "no certificates
+  address; `plaintext` forces insecure transport credentials for a non-loopback
+  address; `plaintext` is mutually exclusive with `force_tls` and with a non-empty
+  `ca_pem`; invalid CA PEM produces a clear parse-error message (both "no certificates
   found" and "certificate block fails to parse" cases), not a generic `grpc`/OpenSSL
   exception; a valid self-signed CA is accepted.
 - The `_GrpcLockStream`/`_GrpcWatchStream` adapters that bridge grpc-python's
