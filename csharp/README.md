@@ -86,7 +86,14 @@ var status = await admin.StatusAsync(new StatusRequest());
 `DialAdmin` mirrors Go's exact TLS-selection logic: loopback addresses (the documented
 `kubectl port-forward` workflow) default to plaintext; every other address is upgraded to TLS
 automatically using the system trust store, or a caller-supplied CA bundle; `forceTls: true`
-requests TLS even for a loopback address.
+requests TLS even for a loopback address. `plaintext: true` forces insecure transport
+credentials even for a non-loopback address, bypassing the loopback heuristic entirely — needed
+once signet exposes a real in-cluster admin listener (bytepunx/signet#19): dialing that Service
+by its cluster-DNS name is a non-loopback address, but the listener is intentionally still
+plaintext-behind-bearer-token, not TLS-terminated. Per-RPC bearer-token authentication is
+unaffected either way. `forceTls` and `plaintext` are mutually exclusive with each other, and
+`plaintext` is mutually exclusive with a non-empty CA bundle — `DialAdmin` throws an
+`ArgumentException` for either combination. See bytepunx/signet-clients#32.
 
 ### Coordinated restarts (no process host, no environment injection)
 
