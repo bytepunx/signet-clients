@@ -26,7 +26,7 @@ func TestIsLoopbackHost(t *testing.T) {
 }
 
 func TestAdminTransportCreds_LoopbackDefaultsPlaintext(t *testing.T) {
-	_, requireTLS, err := adminTransportCreds("localhost:8444", nil, false)
+	_, requireTLS, err := adminTransportCreds("localhost:8444", nil, false, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestAdminTransportCreds_LoopbackDefaultsPlaintext(t *testing.T) {
 }
 
 func TestAdminTransportCreds_NonLoopbackRequiresTLS(t *testing.T) {
-	_, requireTLS, err := adminTransportCreds("signet.internal:8444", nil, false)
+	_, requireTLS, err := adminTransportCreds("signet.internal:8444", nil, false, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -46,7 +46,7 @@ func TestAdminTransportCreds_NonLoopbackRequiresTLS(t *testing.T) {
 }
 
 func TestAdminTransportCreds_ForceTLSOnLoopback(t *testing.T) {
-	_, requireTLS, err := adminTransportCreds("localhost:8444", nil, true)
+	_, requireTLS, err := adminTransportCreds("localhost:8444", nil, true, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -56,15 +56,79 @@ func TestAdminTransportCreds_ForceTLSOnLoopback(t *testing.T) {
 }
 
 func TestAdminTransportCreds_InvalidCAPEM(t *testing.T) {
-	_, _, err := adminTransportCreds("signet.internal:8444", []byte("not a cert"), false)
+	_, _, err := adminTransportCreds("signet.internal:8444", []byte("not a cert"), false, false)
 	if err == nil {
 		t.Errorf("expected error for invalid CA PEM")
 	}
 }
 
+// TestAdminTransportCreds_PlaintextOverridesNonLoopback covers
+// bytepunx/signet-clients#32: a non-loopback address (the shape of an
+// in-cluster Service DNS name) with plaintext=true must still get insecure
+// transport credentials, bypassing the loopback heuristic entirely.
+func TestAdminTransportCreds_PlaintextOverridesNonLoopback(t *testing.T) {
+	creds, requireTLS, err := adminTransportCreds("signet.internal:8444", nil, false, true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if requireTLS {
+		t.Errorf("expected plaintext=true to force insecure transport for a non-loopback address")
+	}
+	if creds.Info().SecurityProtocol != "insecure" {
+		t.Errorf("expected insecure transport credentials, got %q", creds.Info().SecurityProtocol)
+	}
+}
+
+// TestAdminTransportCreds_PlaintextOnLoopbackIsStillPlaintext confirms the
+// existing loopback-defaults-to-plaintext behavior is unchanged when
+// plaintext is also explicitly set (a redundant but harmless combination).
+func TestAdminTransportCreds_PlaintextOnLoopbackIsStillPlaintext(t *testing.T) {
+	_, requireTLS, err := adminTransportCreds("localhost:8444", nil, false, true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if requireTLS {
+		t.Errorf("expected plaintext for loopback address with plaintext=true")
+	}
+}
+
+func TestAdminTransportCreds_PlaintextAndForceTLSAreMutuallyExclusive(t *testing.T) {
+	if _, _, err := adminTransportCreds("signet.internal:8444", nil, true, true); err == nil {
+		t.Errorf("expected error when both forceTLS and plaintext are set")
+	}
+}
+
+func TestAdminTransportCreds_PlaintextAndCAPEMAreMutuallyExclusive(t *testing.T) {
+	if _, _, err := adminTransportCreds("signet.internal:8444", []byte("some pem"), false, true); err == nil {
+		t.Errorf("expected error when both caPEM and plaintext are set")
+	}
+}
+
 func TestDialAdmin_RejectsEmptyToken(t *testing.T) {
-	if _, err := DialAdmin("localhost:8444", "  ", nil, false); err == nil {
+	if _, err := DialAdmin("localhost:8444", "  ", nil, false, false); err == nil {
 		t.Errorf("expected error for empty token")
+	}
+}
+
+// TestDialAdmin_PlaintextOnNonLoopbackSucceeds covers the DialAdmin-level
+// entry point for #32: grpc.NewClient doesn't dial eagerly, so a
+// non-loopback address with plaintext=true should construct successfully
+// without ever attempting a real (and, pre-#32, TLS-handshake-failing)
+// network connection.
+func TestDialAdmin_PlaintextOnNonLoopbackSucceeds(t *testing.T) {
+	conn, err := DialAdmin("signet.internal:8444", "token", nil, false, true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer conn.Close()
+}
+
+// TestDialAdmin_ForceTLSAndPlaintextRejected ensures the contradictory
+// combination is rejected at the DialAdmin entry point too, not just in
+// the adminTransportCreds helper.
+func TestDialAdmin_ForceTLSAndPlaintextRejected(t *testing.T) {
+	if _, err := DialAdmin("localhost:8444", "token", nil, true, true); err == nil {
+		t.Errorf("expected error when both forceTLS and plaintext are set")
 	}
 }
 

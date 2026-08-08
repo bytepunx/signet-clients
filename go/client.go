@@ -7,8 +7,9 @@
 //     required, if it loses the SPIRE identity-registration-propagation
 //     race described in its doc comment.
 //   - DialAdmin connects to the operator-facing AdminService/GitOpsService
-//     using a bearer token over TLS (or plaintext for loopback addresses),
-//     mirroring signet's own `signet` CLI.
+//     using a bearer token over TLS (or plaintext for loopback addresses, or
+//     for any address when explicitly requested via the plaintext
+//     parameter), mirroring signet's own `signet` CLI.
 package signet
 
 import (
@@ -173,17 +174,43 @@ func SecretsClient(conn *grpc.ClientConn) signetv1.SecretsServiceClient {
 }
 
 // DialAdmin opens a gRPC connection to signet's admin listener, injecting
-// token into every RPC as a bearer credential. Loopback addresses (the
-// documented `kubectl port-forward` workflow) use plaintext by default;
-// every other address is upgraded to TLS automatically using the system
-// trust store, or the CA in caPEM if provided. forceTLS requests TLS even
-// for a loopback address.
-func DialAdmin(addr, token string, caPEM []byte, forceTLS bool) (*grpc.ClientConn, error) {
+// token into every RPC as a bearer credential.
+//
+// Transport security is chosen automatically from addr:
+//   - Loopback addresses (localhost, 127.0.0.1, ::1 — the documented
+//     `kubectl port-forward` workflow) default to plaintext.
+//   - Every other address is upgraded to TLS automatically, using the
+//     system trust store, or the CA in caPEM if provided.
+//
+// forceTLS and plaintext both override that heuristic, in opposite
+// directions:
+//   - forceTLS requests TLS even for a loopback address (e.g. testing a
+//     real TLS-terminating proxy locally).
+//   - plaintext forces insecure transport credentials even for a
+//     non-loopback address, bypassing the loopback heuristic entirely.
+//     This is required once signet exposes a real in-cluster admin
+//     listener (bytepunx/signet#19): dialing that Service by its
+//     cluster-DNS name is a non-loopback address, but the listener is
+//     intentionally still plaintext-behind-bearer-token, not
+//     TLS-terminated — without plaintext, the loopback heuristic would
+//     pick TLS and the handshake would fail immediately ("wrong version
+//     number") against a server that never speaks TLS on that listener.
+//     See bytepunx/signet-clients#32.
+//
+// Per-RPC bearer-token authentication (the actual mechanism signet uses to
+// authenticate the caller) is unaffected either way — plaintext only
+// changes the transport, never who signet trusts the caller to be.
+//
+// forceTLS and plaintext are mutually exclusive with each other, and
+// plaintext is mutually exclusive with a non-empty caPEM (there is no
+// meaningful CA to verify against when the transport isn't TLS at all);
+// DialAdmin returns an error if either combination is requested.
+func DialAdmin(addr, token string, caPEM []byte, forceTLS, plaintext bool) (*grpc.ClientConn, error) {
 	if strings.TrimSpace(token) == "" {
 		return nil, fmt.Errorf("token must not be empty")
 	}
 
-	creds, requireTLS, err := adminTransportCreds(addr, caPEM, forceTLS)
+	creds, requireTLS, err := adminTransportCreds(addr, caPEM, forceTLS, plaintext)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +231,17 @@ func GitOpsClient(conn *grpc.ClientConn) adminv1.GitOpsServiceClient {
 	return adminv1.NewGitOpsServiceClient(conn)
 }
 
-func adminTransportCreds(addr string, caPEM []byte, forceTLS bool) (creds credentials.TransportCredentials, requireTLS bool, err error) {
+func adminTransportCreds(addr string, caPEM []byte, forceTLS, plaintext bool) (creds credentials.TransportCredentials, requireTLS bool, err error) {
+	if plaintext && forceTLS {
+		return nil, false, fmt.Errorf("forceTLS and plaintext are mutually exclusive")
+	}
+	if plaintext && len(caPEM) > 0 {
+		return nil, false, fmt.Errorf("plaintext and caPEM are mutually exclusive")
+	}
+	if plaintext {
+		return insecure.NewCredentials(), false, nil
+	}
+
 	host := addr
 	if h, _, splitErr := net.SplitHostPort(addr); splitErr == nil {
 		host = h

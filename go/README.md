@@ -50,7 +50,7 @@ downstream consumer that hit this race. See
 ### Operator access (AdminService/GitOpsService, bearer token)
 
 ```go
-conn, err := signet.DialAdmin("localhost:8444", token, nil, false)
+conn, err := signet.DialAdmin("localhost:8444", token, nil, false, false)
 if err != nil {
     log.Fatal(err)
 }
@@ -59,6 +59,22 @@ defer conn.Close()
 admin := signet.AdminClient(conn)
 status, err := admin.Status(ctx, &adminv1.StatusRequest{})
 ```
+
+`DialAdmin` picks transport security from `addr`: loopback addresses (the documented
+`kubectl port-forward` workflow) default to plaintext, everything else upgrades to TLS
+automatically. The last two parameters override that heuristic in opposite directions —
+`forceTLS` requests TLS even for a loopback address, and `plaintext` forces insecure
+transport even for a non-loopback address, bypassing the heuristic entirely. `plaintext`
+exists for dialing a real in-cluster admin listener by its cluster-DNS name (a
+non-loopback address) once signet exposes one
+([bytepunx/signet#19](https://github.com/bytepunx/signet/issues/19)): that listener is
+intentionally still plaintext-behind-bearer-token, not TLS-terminated, and without
+`plaintext` the loopback heuristic would pick TLS and the handshake would fail
+immediately. Per-RPC bearer-token authentication is unaffected either way. `forceTLS` and
+`plaintext` are mutually exclusive with each other, and `plaintext` is mutually exclusive
+with a non-empty `caPEM`; `DialAdmin` returns an error if either combination is
+requested. See
+[bytepunx/signet-clients#32](https://github.com/bytepunx/signet-clients/issues/32).
 
 See `examples/getsecret` for a complete runnable example.
 
