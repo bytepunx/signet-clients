@@ -4,8 +4,10 @@
 //     SecretsService, authenticated via SPIFFE mTLS.
 //   - dialAdmin/adminClient/gitOpsClient here for the operator-facing
 //     AdminService/GitOpsService, authenticated via a bearer token over TLS
-//     (or plaintext for loopback addresses), mirroring signet's own `signet`
-//     CLI and kubectl port-forward workflow.
+//     (or plaintext for loopback addresses, or for any address when
+//     explicitly requested via the plaintext option — see
+//     bytepunx/signet-clients#32), mirroring signet's own `signet` CLI and
+//     kubectl port-forward workflow.
 import * as fs from "node:fs";
 import * as net from "node:net";
 import { X509Certificate } from "node:crypto";
@@ -55,6 +57,26 @@ export interface DialAdminOptions {
   caPem?: Buffer | string;
   /** Force TLS even for a loopback address. */
   forceTLS?: boolean;
+  /**
+   * Force insecure (plaintext) transport credentials even for a
+   * non-loopback address, bypassing the loopback heuristic entirely. This
+   * is required once signet exposes a real in-cluster admin listener
+   * (bytepunx/signet#19): dialing that Service by its cluster-DNS name is a
+   * non-loopback address, but the listener is intentionally still
+   * plaintext-behind-bearer-token, not TLS-terminated — without plaintext,
+   * the loopback heuristic would pick TLS and the handshake would fail
+   * immediately ("wrong version number") against a server that never
+   * speaks TLS on that listener. Per-RPC bearer-token authentication (the
+   * actual mechanism signet uses to authenticate the caller) is unaffected
+   * either way — plaintext only changes the transport, never who signet
+   * trusts the caller to be. Mutually exclusive with forceTLS and with a
+   * non-empty caPem (there is no meaningful CA to verify against when the
+   * transport isn't TLS at all); dialAdmin/gitOpsClient/adminChannelCredentials
+   * throw if either combination is requested. See
+   * bytepunx/signet-clients#32, mirroring the Go client's DialAdmin
+   * `plaintext` parameter.
+   */
+  plaintext?: boolean;
   channelOptions?: Partial<ClientOptions>;
 }
 
@@ -64,7 +86,9 @@ export interface DialAdminOptions {
  * documented `kubectl port-forward` workflow) use plaintext by default;
  * every other address is upgraded to TLS automatically using the system
  * trust store, or the CA in caPem if provided. forceTLS requests TLS even
- * for a loopback address.
+ * for a loopback address; plaintext forces insecure transport even for a
+ * non-loopback address (see DialAdminOptions.plaintext and
+ * bytepunx/signet-clients#32).
  */
 export function dialAdmin(opts: DialAdminOptions): AdminServiceClient {
   const creds = adminChannelCredentials(opts);
@@ -108,8 +132,10 @@ export function authInterceptor(token: string): Interceptor {
 /**
  * adminChannelCredentials builds the transport ChannelCredentials for
  * dialAdmin/gitOpsClient: plaintext for a loopback address (unless forceTLS
- * or a CA bundle is supplied), TLS otherwise. Exported standalone so its
- * decision logic — and the invalid-CA-PEM error path — can be unit tested
+ * or a CA bundle is supplied) or whenever plaintext is explicitly requested
+ * (see DialAdminOptions.plaintext and bytepunx/signet-clients#32), TLS
+ * otherwise. Exported standalone so its decision logic — and the
+ * invalid-CA-PEM and mutual-exclusion error paths — can be unit tested
  * without opening a socket.
  */
 export function adminChannelCredentials(opts: DialAdminOptions): ChannelCredentials {
@@ -117,7 +143,7 @@ export function adminChannelCredentials(opts: DialAdminOptions): ChannelCredenti
     throw new Error("signet: token must not be empty");
   }
 
-  const { useTLS } = adminTransportMode(opts.address, opts.caPem, opts.forceTLS ?? false);
+  const { useTLS } = adminTransportMode(opts.address, opts.caPem, opts.forceTLS ?? false, opts.plaintext ?? false);
   if (!useTLS) {
     return grpcCredentials.createInsecure();
   }
@@ -130,15 +156,34 @@ export function adminChannelCredentials(opts: DialAdminOptions): ChannelCredenti
  * adminTransportMode decides whether dialAdmin should use TLS, mirroring the
  * Go client's adminTransportCreds. Split out from adminChannelCredentials so
  * tests can assert the decision (loopback-plaintext / non-loopback-TLS /
- * forceTLS) without needing valid certificate material.
+ * forceTLS / plaintext-override) without needing valid certificate material.
+ *
+ * plaintext forces insecure transport regardless of the loopback heuristic
+ * (bytepunx/signet-clients#32). It is mutually exclusive with forceTLS, and
+ * with a non-empty caPem (there is no meaningful CA to verify against when
+ * the transport isn't TLS at all) — either combination throws, matching how
+ * this module signals other invalid option combinations (e.g. the empty-token
+ * check above).
  */
 export function adminTransportMode(
   address: string,
   caPem: Buffer | string | undefined,
   forceTLS: boolean,
+  plaintext = false,
 ): { useTLS: boolean } {
+  const hasCAPem = caPem !== undefined && caPem !== "";
+  if (plaintext && forceTLS) {
+    throw new Error("signet: forceTLS and plaintext are mutually exclusive");
+  }
+  if (plaintext && hasCAPem) {
+    throw new Error("signet: plaintext and caPem are mutually exclusive");
+  }
+  if (plaintext) {
+    return { useTLS: false };
+  }
+
   const host = hostOf(address);
-  const useTLS = forceTLS || (caPem !== undefined && caPem !== "") || !isLoopbackHost(host);
+  const useTLS = forceTLS || hasCAPem || !isLoopbackHost(host);
   return { useTLS };
 }
 
