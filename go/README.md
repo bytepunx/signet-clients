@@ -35,6 +35,18 @@ resp, err := client.GetSecret(ctx, &signetv1.GetSecretRequest{
 })
 ```
 
+`DialWorkload` retries automatically, no opt-in required, if it loses the race between a
+freshly-created pod's SPIFFE identity registration and this call: SPIRE's
+controller-manager registers a new pod's identity reactively (off the pod's own creation
+event), and that registration takes a few seconds to propagate to the node-local SPIRE
+agent this dials. A Job's very first `DialWorkload` call is the sharpest case, since it
+has no prior pod that might already have won this race for the same ServiceAccount. On
+"no identity issued" (and only that failure — anything else is returned immediately), it
+retries up to 5 times total (the initial attempt plus 4 retries), backing off 1s, 2s, 4s,
+8s between them (~15s worst case) — the exact schedule verified working in a real
+downstream consumer that hit this race. See
+[bytepunx/signet-clients#33](https://github.com/bytepunx/signet-clients/issues/33).
+
 ### Operator access (AdminService/GitOpsService, bearer token)
 
 ```go
