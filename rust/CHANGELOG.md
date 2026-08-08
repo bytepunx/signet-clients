@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.0](https://github.com/bytepunx/signet-clients/compare/rust-v0.3.0...rust-v0.4.0) (2026-08-08)
+
+
+### Features
+
+* **csharp:** mirror the plaintext admin-dial option and default workload-dial retry ([41240bd](https://github.com/bytepunx/signet-clients/commit/41240bd45c0da021bf0aec2a81a0495db9129efd))
+* **go:** mirror the plaintext admin-dial option and default workload-dial retry ([dde6c54](https://github.com/bytepunx/signet-clients/commit/dde6c5449c0678cce8993e3b43b7f06a2ca9bdde))
+* **rust:** mirror the plaintext admin-dial option and default workload-dial retry ([0bd7494](https://github.com/bytepunx/signet-clients/commit/0bd7494291ac69649294c204a3e77401997d6611))
+* **typescript:** mirror the plaintext admin-dial option and default workload-dial retry ([6f19c98](https://github.com/bytepunx/signet-clients/commit/6f19c981468dfdf8a962553c5ca13e1f35471df4))
+
 ## [0.3.0](https://github.com/bytepunx/signet-clients/compare/rust-v0.2.0...rust-v0.3.0) (2026-07-20)
 
 
