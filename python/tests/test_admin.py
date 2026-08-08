@@ -113,6 +113,36 @@ def test_admin_transport_creds_valid_ca_pem_succeeds():
     assert creds is not None
 
 
+def test_admin_transport_creds_plaintext_overrides_non_loopback():
+    creds, require_tls = _admin_transport_credentials(
+        "signet.internal:8444", None, False, True
+    )
+    assert require_tls is False, "expected plaintext override for non-loopback address"
+    assert creds is None
+
+
+def test_admin_transport_creds_plaintext_defaults_false():
+    # Existing loopback/non-loopback behavior is unchanged when plaintext
+    # isn't passed at all (positional call, matching pre-#32 call sites).
+    _, require_tls = _admin_transport_credentials("localhost:8444", None, False)
+    assert require_tls is False
+
+    _, require_tls = _admin_transport_credentials("signet.internal:8444", None, False)
+    assert require_tls is True
+
+
+def test_admin_transport_creds_plaintext_and_force_tls_mutually_exclusive():
+    with pytest.raises(ValueError, match=r"force_tls and plaintext are mutually exclusive"):
+        _admin_transport_credentials("signet.internal:8444", None, True, True)
+
+
+def test_admin_transport_creds_plaintext_and_ca_pem_mutually_exclusive():
+    with pytest.raises(ValueError, match=r"plaintext and ca_pem are mutually exclusive"):
+        _admin_transport_credentials(
+            "signet.internal:8444", _self_signed_ca_pem(), False, True
+        )
+
+
 def test_dial_admin_rejects_empty_token():
     with pytest.raises(ValueError, match=r"token must not be empty"):
         dial_admin("localhost:8444", "  ", None, False)
@@ -142,6 +172,26 @@ def test_dial_admin_tls_non_loopback_returns_channel():
 def test_dial_admin_invalid_ca_pem_raises_clear_error():
     with pytest.raises(SignetError, match=r"invalid CA PEM|no PEM certificates"):
         dial_admin("signet.internal:8444", "tok", b"garbage", False)
+
+
+def test_dial_admin_plaintext_non_loopback_returns_channel():
+    channel = dial_admin("signet.internal:8444", "tok", None, False, True)
+    try:
+        assert isinstance(channel, grpc.Channel)
+    finally:
+        channel.close()
+
+
+def test_dial_admin_plaintext_and_force_tls_mutually_exclusive():
+    with pytest.raises(ValueError, match=r"force_tls and plaintext are mutually exclusive"):
+        dial_admin("signet.internal:8444", "tok", None, True, True)
+
+
+def test_dial_admin_plaintext_and_ca_pem_mutually_exclusive():
+    with pytest.raises(ValueError, match=r"plaintext and ca_pem are mutually exclusive"):
+        dial_admin(
+            "signet.internal:8444", "tok", _self_signed_ca_pem(), False, True
+        )
 
 
 def test_read_ca_file(tmp_path):
