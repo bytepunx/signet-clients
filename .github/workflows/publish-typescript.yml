@@ -4,9 +4,22 @@ on:
   push:
     tags:
       - "typescript-v*"
+  # Lets a maintainer re-run a publish for an existing tag (e.g. after fixing
+  # Trusted Publishing setup) without deleting and re-pushing the tag itself
+  # -- dispatch with --ref <tag> to check out and publish that exact tag.
+  workflow_dispatch: {}
 
 permissions:
   contents: read
+  # Required for npm Trusted Publishing (OIDC) -- npm exchanges this job's
+  # GitHub-issued OIDC token for a short-lived publish credential itself, so
+  # there's no long-lived NPM_TOKEN secret to store, rotate, or have expire
+  # out from under a release. Requires the package to have a Trusted
+  # Publisher configured on npmjs.com pointing at this exact repo + workflow
+  # file (bytepunx/signet-clients, publish-typescript.yml) -- a one-time,
+  # npm-website-side setup step for an @bytepunx package owner, not
+  # something expressible in this file.
+  id-token: write
 
 jobs:
   publish:
@@ -43,10 +56,16 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Update npm CLI
+        # Trusted Publishing's OIDC exchange requires npm >= 11.5.1; Node
+        # 22's bundled npm predates that, so pin an explicit floor here
+        # rather than relying on whatever ships with the runner's Node.
+        run: npm install -g npm@^11.5.1
+
       - name: Publish to npm
         # @bytepunx/signet-client is a scoped package; scoped packages
         # default to private on npm, so --access public is required or the
-        # publish is rejected outright.
+        # publish is rejected outright. No NODE_AUTH_TOKEN here -- with a
+        # Trusted Publisher configured, npm authenticates this publish via
+        # the OIDC token from id-token: write above, not a stored secret.
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
