@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/bytepunx/signet-clients/compare/typescript-v0.4.0...typescript-v0.4.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **typescript:** add repository field to package.json for npm Trusted Publishing ([#45](https://github.com/bytepunx/signet-clients/issues/45)) ([b051350](https://github.com/bytepunx/signet-clients/commit/b051350e05ac87914623f8780898f7b2a74e727e))
+
 ## [0.4.0](https://github.com/bytepunx/signet-clients/compare/typescript-v0.3.0...typescript-v0.4.0) (2026-08-08)
 
 
