@@ -3,6 +3,11 @@
   "version": "0.4.0",
   "description": "TypeScript/Node client for signet, generated from bytepunx/signet-proto",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bytepunx/signet-clients.git",
+    "directory": "typescript"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
