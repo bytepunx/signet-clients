@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/bytepunx/signet-clients/compare/typescript-v0.4.1...typescript-v0.5.0) (2026-08-14)
+
+
+### Features
+
+* **typescript:** add JSON Patch helper constructors for PatchServiceConfig ([cd14a18](https://github.com/bytepunx/signet-clients/commit/cd14a1857e944501175dff7e80418635a3f8c7db))
+
 ## [0.4.1](https://github.com/bytepunx/signet-clients/compare/typescript-v0.4.0...typescript-v0.4.1) (2026-08-09)
 
 
