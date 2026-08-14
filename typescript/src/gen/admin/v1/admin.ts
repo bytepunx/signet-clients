@@ -20,6 +20,7 @@ import {
   type ServiceError,
   type UntypedServiceImplementation,
 } from "@grpc/grpc-js";
+import { Value } from "../../google/protobuf/struct.js";
 
 export const protobufPackage = "admin.v1";
 
@@ -218,6 +219,25 @@ export interface DeletePolicyResponse {
   message: string;
 }
 
+export interface DeleteSecretRequest {
+  namespace: string;
+  service: string;
+  secretName: string;
+}
+
+export interface DeleteSecretResponse {
+  message: string;
+}
+
+export interface DeleteConfigRequest {
+  namespace: string;
+  service: string;
+}
+
+export interface DeleteConfigResponse {
+  message: string;
+}
+
 export interface GetSOPSPublicKeyRequest {
 }
 
@@ -326,6 +346,14 @@ export interface RemoveRepositoryResponse {
 export interface TriggerSyncRequest {
   /** repository id */
   id: string;
+  /**
+   * force resolves any config sync conflict (see PatchServiceConfig and
+   * bytepunx/signet#45) by taking git's version, discarding whatever local
+   * PatchServiceConfig changes hadn't yet been reflected in git. Without
+   * force, a conflicted config is left untouched and keeps being reported
+   * in configs_conflicted on every sync until explicitly resolved.
+   */
+  force: boolean;
 }
 
 export interface TriggerSyncResponse {
@@ -335,6 +363,13 @@ export interface TriggerSyncResponse {
   syncSha: string;
   errors: string[];
   configsSynced: number;
+  /**
+   * configs_conflicted counts configs where a JSON path changed on both the
+   * git side and the live (PatchServiceConfig-derived) side since the last
+   * sync — signet refuses to silently pick a winner for these. Re-run with
+   * force=true to take git's version, or resolve the divergence out of band.
+   */
+  configsConflicted: number;
 }
 
 /**
@@ -373,6 +408,51 @@ export interface SyncBundleResponse {
   syncSha: string;
   errors: string[];
   configsSynced: number;
+}
+
+/** JsonPatchOperation is one operation of an RFC 6902 JSON Patch document. */
+export interface JsonPatchOperation {
+  /**
+   * op is one of "add", "remove", "replace", "move", "copy", "test" per
+   * RFC 6902 §4. Unrecognised values are rejected.
+   */
+  op: string;
+  /**
+   * path is an RFC 6901 JSON Pointer into the config document, e.g.
+   * "/tenants/acme/sessionKeyGenerations/-" — a path segment of "-" as the
+   * final component of an "add" path appends to the end of an array, which
+   * is how a single new entry is added to an existing list without reading
+   * it first.
+   */
+  path: string;
+  /**
+   * from is required for "move"/"copy" operations (the source JSON Pointer);
+   * unused otherwise.
+   */
+  from: string;
+  /**
+   * value is required for "add"/"replace"/"test" operations; unused for
+   * "remove"/"move"/"copy".
+   */
+  value: any | undefined;
+}
+
+export interface PatchServiceConfigRequest {
+  namespace: string;
+  service: string;
+  /**
+   * operations are applied in order as a single RFC 6902 JSON Patch document
+   * against the current stored config; the whole patch either fully applies
+   * or the call fails with no partial effect (if any operation fails, e.g. a
+   * "test" precondition or an out-of-bounds path, none of the operations are
+   * committed).
+   */
+  operations: JsonPatchOperation[];
+}
+
+export interface PatchServiceConfigResponse {
+  /** version is the config document's version after this patch was applied. */
+  version: number;
 }
 
 function createBaseUnsealKeyRequest(): UnsealKeyRequest {
@@ -2174,6 +2254,294 @@ export const DeletePolicyResponse: MessageFns<DeletePolicyResponse> = {
   },
 };
 
+function createBaseDeleteSecretRequest(): DeleteSecretRequest {
+  return { namespace: "", service: "", secretName: "" };
+}
+
+export const DeleteSecretRequest: MessageFns<DeleteSecretRequest> = {
+  encode(message: DeleteSecretRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.namespace !== "") {
+      writer.uint32(10).string(message.namespace);
+    }
+    if (message.service !== "") {
+      writer.uint32(18).string(message.service);
+    }
+    if (message.secretName !== "") {
+      writer.uint32(26).string(message.secretName);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteSecretRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteSecretRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.namespace = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.service = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.secretName = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteSecretRequest {
+    return {
+      namespace: isSet(object.namespace) ? globalThis.String(object.namespace) : "",
+      service: isSet(object.service) ? globalThis.String(object.service) : "",
+      secretName: isSet(object.secretName)
+        ? globalThis.String(object.secretName)
+        : isSet(object.secret_name)
+        ? globalThis.String(object.secret_name)
+        : "",
+    };
+  },
+
+  toJSON(message: DeleteSecretRequest): unknown {
+    const obj: any = {};
+    if (message.namespace !== "") {
+      obj.namespace = message.namespace;
+    }
+    if (message.service !== "") {
+      obj.service = message.service;
+    }
+    if (message.secretName !== "") {
+      obj.secretName = message.secretName;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DeleteSecretRequest>): DeleteSecretRequest {
+    return DeleteSecretRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DeleteSecretRequest>): DeleteSecretRequest {
+    const message = createBaseDeleteSecretRequest();
+    message.namespace = object.namespace ?? "";
+    message.service = object.service ?? "";
+    message.secretName = object.secretName ?? "";
+    return message;
+  },
+};
+
+function createBaseDeleteSecretResponse(): DeleteSecretResponse {
+  return { message: "" };
+}
+
+export const DeleteSecretResponse: MessageFns<DeleteSecretResponse> = {
+  encode(message: DeleteSecretResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.message !== "") {
+      writer.uint32(10).string(message.message);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteSecretResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteSecretResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.message = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteSecretResponse {
+    return { message: isSet(object.message) ? globalThis.String(object.message) : "" };
+  },
+
+  toJSON(message: DeleteSecretResponse): unknown {
+    const obj: any = {};
+    if (message.message !== "") {
+      obj.message = message.message;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DeleteSecretResponse>): DeleteSecretResponse {
+    return DeleteSecretResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DeleteSecretResponse>): DeleteSecretResponse {
+    const message = createBaseDeleteSecretResponse();
+    message.message = object.message ?? "";
+    return message;
+  },
+};
+
+function createBaseDeleteConfigRequest(): DeleteConfigRequest {
+  return { namespace: "", service: "" };
+}
+
+export const DeleteConfigRequest: MessageFns<DeleteConfigRequest> = {
+  encode(message: DeleteConfigRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.namespace !== "") {
+      writer.uint32(10).string(message.namespace);
+    }
+    if (message.service !== "") {
+      writer.uint32(18).string(message.service);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteConfigRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteConfigRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.namespace = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.service = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteConfigRequest {
+    return {
+      namespace: isSet(object.namespace) ? globalThis.String(object.namespace) : "",
+      service: isSet(object.service) ? globalThis.String(object.service) : "",
+    };
+  },
+
+  toJSON(message: DeleteConfigRequest): unknown {
+    const obj: any = {};
+    if (message.namespace !== "") {
+      obj.namespace = message.namespace;
+    }
+    if (message.service !== "") {
+      obj.service = message.service;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DeleteConfigRequest>): DeleteConfigRequest {
+    return DeleteConfigRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DeleteConfigRequest>): DeleteConfigRequest {
+    const message = createBaseDeleteConfigRequest();
+    message.namespace = object.namespace ?? "";
+    message.service = object.service ?? "";
+    return message;
+  },
+};
+
+function createBaseDeleteConfigResponse(): DeleteConfigResponse {
+  return { message: "" };
+}
+
+export const DeleteConfigResponse: MessageFns<DeleteConfigResponse> = {
+  encode(message: DeleteConfigResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.message !== "") {
+      writer.uint32(10).string(message.message);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteConfigResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteConfigResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.message = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteConfigResponse {
+    return { message: isSet(object.message) ? globalThis.String(object.message) : "" };
+  },
+
+  toJSON(message: DeleteConfigResponse): unknown {
+    const obj: any = {};
+    if (message.message !== "") {
+      obj.message = message.message;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DeleteConfigResponse>): DeleteConfigResponse {
+    return DeleteConfigResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DeleteConfigResponse>): DeleteConfigResponse {
+    const message = createBaseDeleteConfigResponse();
+    message.message = object.message ?? "";
+    return message;
+  },
+};
+
 function createBaseGetSOPSPublicKeyRequest(): GetSOPSPublicKeyRequest {
   return {};
 }
@@ -3558,13 +3926,16 @@ export const RemoveRepositoryResponse: MessageFns<RemoveRepositoryResponse> = {
 };
 
 function createBaseTriggerSyncRequest(): TriggerSyncRequest {
-  return { id: "" };
+  return { id: "", force: false };
 }
 
 export const TriggerSyncRequest: MessageFns<TriggerSyncRequest> = {
   encode(message: TriggerSyncRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.id !== "") {
       writer.uint32(10).string(message.id);
+    }
+    if (message.force !== false) {
+      writer.uint32(16).bool(message.force);
     }
     return writer;
   },
@@ -3584,6 +3955,14 @@ export const TriggerSyncRequest: MessageFns<TriggerSyncRequest> = {
           message.id = reader.string();
           continue;
         }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.force = reader.bool();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -3594,13 +3973,19 @@ export const TriggerSyncRequest: MessageFns<TriggerSyncRequest> = {
   },
 
   fromJSON(object: any): TriggerSyncRequest {
-    return { id: isSet(object.id) ? globalThis.String(object.id) : "" };
+    return {
+      id: isSet(object.id) ? globalThis.String(object.id) : "",
+      force: isSet(object.force) ? globalThis.Boolean(object.force) : false,
+    };
   },
 
   toJSON(message: TriggerSyncRequest): unknown {
     const obj: any = {};
     if (message.id !== "") {
       obj.id = message.id;
+    }
+    if (message.force !== false) {
+      obj.force = message.force;
     }
     return obj;
   },
@@ -3611,12 +3996,21 @@ export const TriggerSyncRequest: MessageFns<TriggerSyncRequest> = {
   fromPartial(object: DeepPartial<TriggerSyncRequest>): TriggerSyncRequest {
     const message = createBaseTriggerSyncRequest();
     message.id = object.id ?? "";
+    message.force = object.force ?? false;
     return message;
   },
 };
 
 function createBaseTriggerSyncResponse(): TriggerSyncResponse {
-  return { secretsAdded: 0, secretsUpdated: 0, secretsDeleted: 0, syncSha: "", errors: [], configsSynced: 0 };
+  return {
+    secretsAdded: 0,
+    secretsUpdated: 0,
+    secretsDeleted: 0,
+    syncSha: "",
+    errors: [],
+    configsSynced: 0,
+    configsConflicted: 0,
+  };
 }
 
 export const TriggerSyncResponse: MessageFns<TriggerSyncResponse> = {
@@ -3638,6 +4032,9 @@ export const TriggerSyncResponse: MessageFns<TriggerSyncResponse> = {
     }
     if (message.configsSynced !== 0) {
       writer.uint32(48).int32(message.configsSynced);
+    }
+    if (message.configsConflicted !== 0) {
+      writer.uint32(56).int32(message.configsConflicted);
     }
     return writer;
   },
@@ -3697,6 +4094,14 @@ export const TriggerSyncResponse: MessageFns<TriggerSyncResponse> = {
           message.configsSynced = reader.int32();
           continue;
         }
+        case 7: {
+          if (tag !== 56) {
+            break;
+          }
+
+          message.configsConflicted = reader.int32();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -3736,6 +4141,11 @@ export const TriggerSyncResponse: MessageFns<TriggerSyncResponse> = {
         : isSet(object.configs_synced)
         ? globalThis.Number(object.configs_synced)
         : 0,
+      configsConflicted: isSet(object.configsConflicted)
+        ? globalThis.Number(object.configsConflicted)
+        : isSet(object.configs_conflicted)
+        ? globalThis.Number(object.configs_conflicted)
+        : 0,
     };
   },
 
@@ -3759,6 +4169,9 @@ export const TriggerSyncResponse: MessageFns<TriggerSyncResponse> = {
     if (message.configsSynced !== 0) {
       obj.configsSynced = Math.round(message.configsSynced);
     }
+    if (message.configsConflicted !== 0) {
+      obj.configsConflicted = Math.round(message.configsConflicted);
+    }
     return obj;
   },
 
@@ -3773,6 +4186,7 @@ export const TriggerSyncResponse: MessageFns<TriggerSyncResponse> = {
     message.syncSha = object.syncSha ?? "";
     message.errors = object.errors?.map((e) => e) || [];
     message.configsSynced = object.configsSynced ?? 0;
+    message.configsConflicted = object.configsConflicted ?? 0;
     return message;
   },
 };
@@ -4121,6 +4535,266 @@ export const SyncBundleResponse: MessageFns<SyncBundleResponse> = {
   },
 };
 
+function createBaseJsonPatchOperation(): JsonPatchOperation {
+  return { op: "", path: "", from: "", value: undefined };
+}
+
+export const JsonPatchOperation: MessageFns<JsonPatchOperation> = {
+  encode(message: JsonPatchOperation, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.op !== "") {
+      writer.uint32(10).string(message.op);
+    }
+    if (message.path !== "") {
+      writer.uint32(18).string(message.path);
+    }
+    if (message.from !== "") {
+      writer.uint32(26).string(message.from);
+    }
+    if (message.value !== undefined) {
+      Value.encode(Value.wrap(message.value), writer.uint32(34).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): JsonPatchOperation {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseJsonPatchOperation();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.op = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.path = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.from = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.value = Value.unwrap(Value.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): JsonPatchOperation {
+    return {
+      op: isSet(object.op) ? globalThis.String(object.op) : "",
+      path: isSet(object.path) ? globalThis.String(object.path) : "",
+      from: isSet(object.from) ? globalThis.String(object.from) : "",
+      value: isSet(object?.value) ? object.value : undefined,
+    };
+  },
+
+  toJSON(message: JsonPatchOperation): unknown {
+    const obj: any = {};
+    if (message.op !== "") {
+      obj.op = message.op;
+    }
+    if (message.path !== "") {
+      obj.path = message.path;
+    }
+    if (message.from !== "") {
+      obj.from = message.from;
+    }
+    if (message.value !== undefined) {
+      obj.value = message.value;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<JsonPatchOperation>): JsonPatchOperation {
+    return JsonPatchOperation.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<JsonPatchOperation>): JsonPatchOperation {
+    const message = createBaseJsonPatchOperation();
+    message.op = object.op ?? "";
+    message.path = object.path ?? "";
+    message.from = object.from ?? "";
+    message.value = object.value ?? undefined;
+    return message;
+  },
+};
+
+function createBasePatchServiceConfigRequest(): PatchServiceConfigRequest {
+  return { namespace: "", service: "", operations: [] };
+}
+
+export const PatchServiceConfigRequest: MessageFns<PatchServiceConfigRequest> = {
+  encode(message: PatchServiceConfigRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.namespace !== "") {
+      writer.uint32(10).string(message.namespace);
+    }
+    if (message.service !== "") {
+      writer.uint32(18).string(message.service);
+    }
+    for (const v of message.operations) {
+      JsonPatchOperation.encode(v!, writer.uint32(26).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PatchServiceConfigRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePatchServiceConfigRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.namespace = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.service = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.operations.push(JsonPatchOperation.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PatchServiceConfigRequest {
+    return {
+      namespace: isSet(object.namespace) ? globalThis.String(object.namespace) : "",
+      service: isSet(object.service) ? globalThis.String(object.service) : "",
+      operations: globalThis.Array.isArray(object?.operations)
+        ? object.operations.map((e: any) => JsonPatchOperation.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: PatchServiceConfigRequest): unknown {
+    const obj: any = {};
+    if (message.namespace !== "") {
+      obj.namespace = message.namespace;
+    }
+    if (message.service !== "") {
+      obj.service = message.service;
+    }
+    if (message.operations?.length) {
+      obj.operations = message.operations.map((e) => JsonPatchOperation.toJSON(e));
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<PatchServiceConfigRequest>): PatchServiceConfigRequest {
+    return PatchServiceConfigRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<PatchServiceConfigRequest>): PatchServiceConfigRequest {
+    const message = createBasePatchServiceConfigRequest();
+    message.namespace = object.namespace ?? "";
+    message.service = object.service ?? "";
+    message.operations = object.operations?.map((e) => JsonPatchOperation.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBasePatchServiceConfigResponse(): PatchServiceConfigResponse {
+  return { version: 0 };
+}
+
+export const PatchServiceConfigResponse: MessageFns<PatchServiceConfigResponse> = {
+  encode(message: PatchServiceConfigResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.version !== 0) {
+      writer.uint32(8).int32(message.version);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PatchServiceConfigResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePatchServiceConfigResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.version = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PatchServiceConfigResponse {
+    return { version: isSet(object.version) ? globalThis.Number(object.version) : 0 };
+  },
+
+  toJSON(message: PatchServiceConfigResponse): unknown {
+    const obj: any = {};
+    if (message.version !== 0) {
+      obj.version = Math.round(message.version);
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<PatchServiceConfigResponse>): PatchServiceConfigResponse {
+    return PatchServiceConfigResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<PatchServiceConfigResponse>): PatchServiceConfigResponse {
+    const message = createBasePatchServiceConfigResponse();
+    message.version = object.version ?? 0;
+    return message;
+  },
+};
+
 /** AdminService handles operator lifecycle operations: unsealing, sealing, and status. */
 export type AdminServiceService = typeof AdminServiceService;
 export const AdminServiceService = {
@@ -4246,6 +4920,31 @@ export const AdminServiceService = {
       Buffer.from(DeletePolicyResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer): DeletePolicyResponse => DeletePolicyResponse.decode(value),
   },
+  /**
+   * Explicit secret/config deletion. GitOps sync no longer infers deletion
+   * from a file's absence during a walk (see bytepunx/signet#44) — these are
+   * now the only way to remove a secret or config document.
+   */
+  deleteSecret: {
+    path: "/admin.v1.AdminService/DeleteSecret" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: DeleteSecretRequest): Buffer => Buffer.from(DeleteSecretRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): DeleteSecretRequest => DeleteSecretRequest.decode(value),
+    responseSerialize: (value: DeleteSecretResponse): Buffer =>
+      Buffer.from(DeleteSecretResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): DeleteSecretResponse => DeleteSecretResponse.decode(value),
+  },
+  deleteConfig: {
+    path: "/admin.v1.AdminService/DeleteConfig" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: DeleteConfigRequest): Buffer => Buffer.from(DeleteConfigRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): DeleteConfigRequest => DeleteConfigRequest.decode(value),
+    responseSerialize: (value: DeleteConfigResponse): Buffer =>
+      Buffer.from(DeleteConfigResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): DeleteConfigResponse => DeleteConfigResponse.decode(value),
+  },
 } as const;
 
 export interface AdminServiceServer extends UntypedServiceImplementation {
@@ -4278,6 +4977,13 @@ export interface AdminServiceServer extends UntypedServiceImplementation {
   createPolicy: handleUnaryCall<CreatePolicyRequest, CreatePolicyResponse>;
   listPolicies: handleUnaryCall<ListPoliciesRequest, ListPoliciesResponse>;
   deletePolicy: handleUnaryCall<DeletePolicyRequest, DeletePolicyResponse>;
+  /**
+   * Explicit secret/config deletion. GitOps sync no longer infers deletion
+   * from a file's absence during a walk (see bytepunx/signet#44) — these are
+   * now the only way to remove a secret or config document.
+   */
+  deleteSecret: handleUnaryCall<DeleteSecretRequest, DeleteSecretResponse>;
+  deleteConfig: handleUnaryCall<DeleteConfigRequest, DeleteConfigResponse>;
 }
 
 export interface AdminServiceClient extends Client {
@@ -4461,6 +5167,41 @@ export interface AdminServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: DeletePolicyResponse) => void,
   ): ClientUnaryCall;
+  /**
+   * Explicit secret/config deletion. GitOps sync no longer infers deletion
+   * from a file's absence during a walk (see bytepunx/signet#44) — these are
+   * now the only way to remove a secret or config document.
+   */
+  deleteSecret(
+    request: DeleteSecretRequest,
+    callback: (error: ServiceError | null, response: DeleteSecretResponse) => void,
+  ): ClientUnaryCall;
+  deleteSecret(
+    request: DeleteSecretRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: DeleteSecretResponse) => void,
+  ): ClientUnaryCall;
+  deleteSecret(
+    request: DeleteSecretRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: DeleteSecretResponse) => void,
+  ): ClientUnaryCall;
+  deleteConfig(
+    request: DeleteConfigRequest,
+    callback: (error: ServiceError | null, response: DeleteConfigResponse) => void,
+  ): ClientUnaryCall;
+  deleteConfig(
+    request: DeleteConfigRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: DeleteConfigResponse) => void,
+  ): ClientUnaryCall;
+  deleteConfig(
+    request: DeleteConfigRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: DeleteConfigResponse) => void,
+  ): ClientUnaryCall;
 }
 
 export const AdminServiceClient = makeGenericClientConstructor(
@@ -4575,6 +5316,30 @@ export const GitOpsServiceService = {
     responseSerialize: (value: SyncBundleResponse): Buffer => Buffer.from(SyncBundleResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer): SyncBundleResponse => SyncBundleResponse.decode(value),
   },
+  /**
+   * PatchServiceConfig atomically applies a JSON Patch (RFC 6902) to a
+   * service's existing plain config document, without the caller reading,
+   * modifying, and re-pushing the whole document — SyncBundle's config path
+   * is a full-document replace, which silently drops every other field/entry
+   * a partial push doesn't mention. The patch is applied server-side inside
+   * a single transaction (read current content, apply, write back), so two
+   * concurrent PatchServiceConfig calls against the same namespace/service
+   * never lose either update, unlike a client-side read-modify-write. Fails
+   * NotFound if no config document exists yet for namespace/service — this
+   * RPC only mutates an existing document, it does not create one (use
+   * SyncBundle/git sync to create the initial document).
+   */
+  patchServiceConfig: {
+    path: "/admin.v1.GitOpsService/PatchServiceConfig" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: PatchServiceConfigRequest): Buffer =>
+      Buffer.from(PatchServiceConfigRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): PatchServiceConfigRequest => PatchServiceConfigRequest.decode(value),
+    responseSerialize: (value: PatchServiceConfigResponse): Buffer =>
+      Buffer.from(PatchServiceConfigResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): PatchServiceConfigResponse => PatchServiceConfigResponse.decode(value),
+  },
 } as const;
 
 export interface GitOpsServiceServer extends UntypedServiceImplementation {
@@ -4595,6 +5360,20 @@ export interface GitOpsServiceServer extends UntypedServiceImplementation {
    * buf:lint:ignore RPC_REQUEST_STANDARD_NAME
    */
   syncBundle: handleClientStreamingCall<SyncBundleChunk, SyncBundleResponse>;
+  /**
+   * PatchServiceConfig atomically applies a JSON Patch (RFC 6902) to a
+   * service's existing plain config document, without the caller reading,
+   * modifying, and re-pushing the whole document — SyncBundle's config path
+   * is a full-document replace, which silently drops every other field/entry
+   * a partial push doesn't mention. The patch is applied server-side inside
+   * a single transaction (read current content, apply, write back), so two
+   * concurrent PatchServiceConfig calls against the same namespace/service
+   * never lose either update, unlike a client-side read-modify-write. Fails
+   * NotFound if no config document exists yet for namespace/service — this
+   * RPC only mutates an existing document, it does not create one (use
+   * SyncBundle/git sync to create the initial document).
+   */
+  patchServiceConfig: handleUnaryCall<PatchServiceConfigRequest, PatchServiceConfigResponse>;
 }
 
 export interface GitOpsServiceClient extends Client {
@@ -4742,6 +5521,34 @@ export interface GitOpsServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: SyncBundleResponse) => void,
   ): ClientWritableStream<SyncBundleChunk>;
+  /**
+   * PatchServiceConfig atomically applies a JSON Patch (RFC 6902) to a
+   * service's existing plain config document, without the caller reading,
+   * modifying, and re-pushing the whole document — SyncBundle's config path
+   * is a full-document replace, which silently drops every other field/entry
+   * a partial push doesn't mention. The patch is applied server-side inside
+   * a single transaction (read current content, apply, write back), so two
+   * concurrent PatchServiceConfig calls against the same namespace/service
+   * never lose either update, unlike a client-side read-modify-write. Fails
+   * NotFound if no config document exists yet for namespace/service — this
+   * RPC only mutates an existing document, it does not create one (use
+   * SyncBundle/git sync to create the initial document).
+   */
+  patchServiceConfig(
+    request: PatchServiceConfigRequest,
+    callback: (error: ServiceError | null, response: PatchServiceConfigResponse) => void,
+  ): ClientUnaryCall;
+  patchServiceConfig(
+    request: PatchServiceConfigRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: PatchServiceConfigResponse) => void,
+  ): ClientUnaryCall;
+  patchServiceConfig(
+    request: PatchServiceConfigRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: PatchServiceConfigResponse) => void,
+  ): ClientUnaryCall;
 }
 
 export const GitOpsServiceClient = makeGenericClientConstructor(
