@@ -71,6 +71,42 @@ combination is requested. Matches the Go client's `DialAdmin` `plaintext` parame
 const admin = dialAdmin({ address: "signet-admin.signet.svc.cluster.local:8444", token, plaintext: true });
 ```
 
+#### Patching a service's plain config (`GitOpsService.PatchServiceConfig`)
+
+`SyncBundle`'s config path is a full-document replace — pushing a file covering only the
+tenant/field you care about silently drops every other entry the live document already has.
+`PatchServiceConfig` applies an [RFC 6902](https://www.rfc-editor.org/rfc/rfc6902) JSON Patch
+atomically server-side instead, so a caller never needs to read the current document just to
+add or remove one entry (bytepunx/signet#38). `jsonPatchAppend`/`jsonPatchAdd`/
+`jsonPatchReplace`/`jsonPatchRemove`/`jsonPatchTest` build the `{op, path, from, value}` shape
+by hand-writing it out at every call site:
+
+```ts
+import { gitOpsClient, jsonPatchAppend } from "@bytepunx/signet-client";
+
+const gitops = gitOpsClient({ address: "signet-admin.signet.svc.cluster.local:8444", token, plaintext: true });
+
+await new Promise((resolve, reject) =>
+  gitops.patchServiceConfig(
+    {
+      namespace: "authstar",
+      service: "portcullis",
+      operations: [
+        // "/-" appends without needing to know the array's current length.
+        jsonPatchAppend("/tenants/acme/sessionKeyGenerations", { version: 2, effectiveFrom: new Date().toISOString() }),
+      ],
+    },
+    (err, resp) => (err ? reject(err) : resolve(resp)),
+  ),
+);
+```
+
+Fails `NotFound` if no config document exists yet for `namespace`/`service` — this RPC only
+mutates an existing document (use `SyncBundle` or git sync to create the initial one). The whole
+patch either fully applies or fails with no partial effect; `jsonPatchTest` is useful as a
+concurrency guard (assert an array entry hasn't changed since you last read it, rather than
+silently overwriting or removing the wrong one).
+
 ### Workload access (SecretsService, SPIFFE mTLS)
 
 ```ts

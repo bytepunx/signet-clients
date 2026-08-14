@@ -47,6 +47,14 @@ export {
   type WatchBundleOptions,
 } from "./restart.js";
 
+export {
+  jsonPatchAdd,
+  jsonPatchAppend,
+  jsonPatchRemove,
+  jsonPatchReplace,
+  jsonPatchTest,
+} from "./jsonpatch.js";
+
 // Generated proto types/messages, namespaced like the Go client's
 // `signetv1`/`adminv1` package aliases to avoid symbol collisions between
 // the two schemas (both import shared google.protobuf well-known types).
