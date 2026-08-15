@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/bytepunx/signet-clients/compare/go/v0.4.0...go/v0.5.0) (2026-08-15)
+
+
+### Features
+
+* **go:** add EncryptForSecret for client-side SOPS encryption ([#50](https://github.com/bytepunx/signet-clients/issues/50)) ([74ed4dc](https://github.com/bytepunx/signet-clients/commit/74ed4dc72094b712ec5348dd63d5264eb95237b3))
+
 ## [0.4.0](https://github.com/bytepunx/signet-clients/compare/go/v0.3.0...go/v0.4.0) (2026-08-08)
 
 
