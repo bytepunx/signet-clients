@@ -71,6 +71,33 @@ combination is requested. Matches the Go client's `DialAdmin` `plaintext` parame
 const admin = dialAdmin({ address: "signet-admin.signet.svc.cluster.local:8444", token, plaintext: true });
 ```
 
+#### Encrypting a secret value for `SyncBundle`/`TriggerSync` (`encryptForSecret`)
+
+signetd never encrypts secrets on a caller's behalf — `SyncBundle`/`TriggerSync` both require
+content that is already real [SOPS](https://github.com/getsops/sops) ciphertext (signet's
+documented trust model is "only SOPS ciphertext leaves the operator's machine"). `encryptForSecret`
+produces that ciphertext client-side: a SOPS-encrypted YAML document holding a single `value` field,
+encrypted to one age (X25519) recipient — normally the key returned by
+`AdminService.GetSOPSPublicKey` (bytepunx/signet-clients#49).
+
+```ts
+import { encryptForSecret, dialAdmin } from "@bytepunx/signet-client";
+
+const admin = dialAdmin({ address: "localhost:8444", token });
+const { publicKey } = await new Promise((resolve, reject) =>
+  admin.getSOPSPublicKey({}, (err, resp) => (err ? reject(err) : resolve(resp))),
+);
+
+const content = await encryptForSecret(publicKey, "s3cr3t-api-key");
+// `content` is now ready to hand to SyncBundle/TriggerSync as an encrypted secret's contents.
+```
+
+This is a from-scratch implementation of the narrow slice of the SOPS envelope format this
+package needs, built on [`age-encryption`](https://www.npmjs.com/package/age-encryption) (the
+official TypeScript port of age) — no npm package implements the real SOPS format (everything
+under "sops" on npm is decrypt-only, or produces an incompatible custom format). Output is
+verified to round-trip through the real `sops` binary; see `src/sopsEncrypt.test.ts`.
+
 #### Patching a service's plain config (`GitOpsService.PatchServiceConfig`)
 
 `SyncBundle`'s config path is a full-document replace — pushing a file covering only the

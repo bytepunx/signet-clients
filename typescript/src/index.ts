@@ -55,6 +55,8 @@ export {
   jsonPatchTest,
 } from "./jsonpatch.js";
 
+export { encryptForSecret } from "./sopsEncrypt.js";
+
 // Generated proto types/messages, namespaced like the Go client's
 // `signetv1`/`adminv1` package aliases to avoid symbol collisions between
 // the two schemas (both import shared google.protobuf well-known types).
