@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/bytepunx/signet-clients/compare/csharp-v0.4.0...csharp-v0.5.0) (2026-08-15)
+
+
+### Features
+
+* **csharp:** add SOPS-compatible client-side secret encryption ([#54](https://github.com/bytepunx/signet-clients/issues/54)) ([2a5444d](https://github.com/bytepunx/signet-clients/commit/2a5444df1c461bcf6ba7f85a3f4d89bc74268097))
+
 ## [0.4.0](https://github.com/bytepunx/signet-clients/compare/csharp-v0.3.0...csharp-v0.4.0) (2026-08-08)
 
 
