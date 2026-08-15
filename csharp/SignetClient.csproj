@@ -19,6 +19,16 @@
   <ItemGroup>
     <PackageReference Include="Grpc.Net.Client" Version="2.71.0"/>
     <PackageReference Include="Google.Protobuf" Version="3.32.1"/>
+    <!-- Used by SopsEncrypt.cs for: (1) AES-256-GCM with SOPS's own non-standard 32-byte nonce
+         (System.Security.Cryptography.AesGcm on net8.0 only supports the standard 12-byte
+         nonce), and (2) the X25519/ChaCha20-Poly1305/HKDF-SHA256/HMAC-SHA256 primitives needed to
+         hand-implement the age-encryption.org/v1 file format. No candidate NuGet package
+         implements the SOPS envelope format in-process for net8.0 — see SopsEncrypt.cs's doc
+         comment for the full writeup, including why AgeSharp (the one age-format library found)
+         was ruled out (net10.0-only). -->
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0"/>
+    <!-- Used by SopsEncrypt.cs to serialize the SOPS-encrypted YAML document. -->
+    <PackageReference Include="YamlDotNet" Version="18.1.0"/>
     <!-- Third-party SPIFFE Workload API client (github.com/vurhanau/csharp-spiffe).
          Not an official spiffe.io project (unlike go-spiffe, which go/client.go
          depends on) — single maintainer, pre-1.0 (0.0.x), ~12 GitHub stars as of

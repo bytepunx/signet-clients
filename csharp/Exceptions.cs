@@ -57,3 +57,18 @@ public class StreamClosedException : SignetException
     {
     }
 }
+
+/// <summary>
+/// Raised by <see cref="SopsEncryption.EncryptForSecret"/> when the supplied age public key is
+/// empty or cannot be parsed as a Bech32-encoded <c>age1...</c> X25519 recipient.
+/// </summary>
+public class SopsEncryptionException : SignetException
+{
+    public SopsEncryptionException(string message) : base(message)
+    {
+    }
+
+    public SopsEncryptionException(string message, Exception innerException) : base(message, innerException)
+    {
+    }
+}
