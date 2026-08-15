@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/bytepunx/signet-clients/compare/rust-v0.4.0...rust-v0.5.0) (2026-08-15)
+
+
+### Features
+
+* **rust:** add EncryptForSecret-equivalent for producing SOPS-compatible ciphertext ([#51](https://github.com/bytepunx/signet-clients/issues/51)) ([28e5421](https://github.com/bytepunx/signet-clients/commit/28e54214f8929b8157b0a3881f2a87ed6312d226))
+
 ## [0.4.0](https://github.com/bytepunx/signet-clients/compare/rust-v0.3.0...rust-v0.4.0) (2026-08-08)
 
 
