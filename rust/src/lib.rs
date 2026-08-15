@@ -19,9 +19,15 @@
 //! restart lock, without a process host and without ever writing secrets to
 //! the environment or disk. See `README.md`'s "Coordinated restarts" section
 //! for the full design rationale, mirrored from the Go client.
+//!
+//! [`encrypt_for_secret`](sops_encrypt::encrypt_for_secret) produces
+//! SOPS-compatible encrypted ciphertext for a secret value, since signetd
+//! never encrypts on a client's behalf (`SyncBundle`/`TriggerSync` require
+//! content already be real SOPS ciphertext). Mirrors `go/sops_encrypt.go`.
 
 pub mod client;
 pub mod restart;
+pub mod sops_encrypt;
 
 /// Generated protobuf/tonic bindings for signet, from bytepunx/signet-proto.
 /// Run `buf generate` to regenerate `src/gen`.
@@ -46,3 +52,4 @@ pub use client::{
 #[cfg(feature = "spiffe-workload")]
 pub use client::dial_workload;
 pub use restart::{acquire_lock, wait_for_restart, watch_bundle, Lock, RestartError};
+pub use sops_encrypt::{encrypt_for_secret, SopsEncryptError};

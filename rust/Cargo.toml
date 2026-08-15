@@ -42,6 +42,17 @@ thiserror = "2"
 # specific parse error, before ever attempting a connection.
 rustls-pemfile = "2"
 
+# --- sops_encrypt: hand-rolled SOPS envelope on top of the reference age
+# implementation. See src/sops_encrypt.rs for why this isn't built on a
+# SOPS-format crate (the only one that exists, `rops`, is pre-1.0 with open
+# issues about MAC/AAD compatibility — the exact area this can't get wrong).
+age = { version = "0.11", features = ["armor"] }
+aes-gcm = "0.10"
+sha2 = "0.10"
+serde_yaml_ng = "0.10"
+serde = { version = "1", features = ["derive"] }
+base64 = "0.22"
+
 # --- optional: `spiffe-workload` feature ---
 spiffe = { version = "0.16", features = ["x509-source", "workload-api-x509", "transport-grpc"], optional = true }
 spiffe-rustls = { version = "0.7", optional = true }
@@ -65,6 +76,6 @@ required-features = ["spiffe-workload"]
 tokio = { version = "1", features = ["full", "test-util"] }
 # Used only by the `echo` example, to render a fetched bundle (with secrets
 # base64-decoded) as a single JSON log line for the Docker/K8s smoke-test
-# harness's log-based verification.
+# harness's log-based verification. (`base64` itself now lives in
+# [dependencies], used directly by sops_encrypt.)
 serde_json = "1"
-base64 = "0.22"
