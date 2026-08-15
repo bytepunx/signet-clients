@@ -14,11 +14,17 @@ implement signet's coordinated-restart protocol against any
 ``SecretsServiceStub`` (i.e. against a channel you dial yourself, or one
 returned by :func:`dial_workload`) — see python/README.md's "Coordinated
 restarts" section.
+
+:func:`encrypt_for_secret` produces real SOPS-compatible ciphertext for a
+single secret value, for use with the admin-facing ``SyncBundle``/
+``TriggerSync`` RPCs, which only ever accept content that is already SOPS
+ciphertext.
 """
 
 from .admin import admin_client, dial_admin, gitops_client, read_ca_file
 from .errors import LockLostError, SignetError
 from .restart import Lock, Watch, acquire_lock, wait_for_restart, watch_bundle
+from .sops_encrypt import encrypt_for_secret
 from .workload import dial_workload, secrets_client
 
 __all__ = [
@@ -35,4 +41,5 @@ __all__ = [
     "acquire_lock",
     "watch_bundle",
     "wait_for_restart",
+    "encrypt_for_secret",
 ]

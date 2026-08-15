@@ -9,8 +9,21 @@ dependencies = [
     "grpcio>=1.66",
     "protobuf>=5.27",
     # Used to validate/parse CA bundles for DialAdmin with a clear error
-    # message instead of a raw grpc/OpenSSL failure at handshake time.
+    # message instead of a raw grpc/OpenSSL failure at handshake time; also
+    # provides the AES-256-GCM primitive encrypt_for_secret uses to match
+    # sops' leaf/MAC encryption scheme.
     "cryptography>=42",
+    # PyO3 bindings to the Rust `rage` crate (age encryption), used by
+    # encrypt_for_secret to wrap the SOPS data key to an age recipient. No
+    # PyPI package implements the actual SOPS envelope format (the old
+    # `sops` package is dead/PGP-only), so encrypt_for_secret hand-rolls
+    # that narrow slice on top of this. >=1.3.0 for armored-output support.
+    "pyrage>=1.3.0",
+    # YAML serialization for encrypt_for_secret's SOPS document output.
+    # ruamel.yaml (rather than PyYAML) is used for its literal-block-scalar
+    # support (LiteralScalarString), needed to emit the age-armored
+    # `enc: |` block the way sops itself does.
+    "ruamel.yaml>=0.18",
 ]
 
 [project.optional-dependencies]
