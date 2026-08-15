@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/bytepunx/signet-clients/compare/typescript-v0.5.0...typescript-v0.6.0) (2026-08-15)
+
+
+### Features
+
+* **typescript:** add encryptForSecret for client-side SOPS encryption ([#52](https://github.com/bytepunx/signet-clients/issues/52)) ([8614bf9](https://github.com/bytepunx/signet-clients/commit/8614bf9921da527ed04e1778e4898a00bfab0020))
+
 ## [0.5.0](https://github.com/bytepunx/signet-clients/compare/typescript-v0.4.1...typescript-v0.5.0) (2026-08-14)
 
 
