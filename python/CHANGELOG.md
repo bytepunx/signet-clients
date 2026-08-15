@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/bytepunx/signet-clients/compare/python-v0.3.0...python-v0.4.0) (2026-08-15)
+
+
+### Features
+
+* **python:** add encrypt_for_secret for producing SOPS-compatible ciphertext ([#53](https://github.com/bytepunx/signet-clients/issues/53)) ([d9a2047](https://github.com/bytepunx/signet-clients/commit/d9a2047fee601debeecddc16552f7aceb30d51c2))
+
 ## [0.3.0](https://github.com/bytepunx/signet-clients/compare/python-v0.2.0...python-v0.3.0) (2026-08-08)
 
 
