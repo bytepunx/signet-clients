@@ -621,6 +621,7 @@ const (
 	GitOpsService_TriggerSync_FullMethodName        = "/admin.v1.GitOpsService/TriggerSync"
 	GitOpsService_SyncBundle_FullMethodName         = "/admin.v1.GitOpsService/SyncBundle"
 	GitOpsService_PatchServiceConfig_FullMethodName = "/admin.v1.GitOpsService/PatchServiceConfig"
+	GitOpsService_GetServiceConfig_FullMethodName   = "/admin.v1.GitOpsService/GetServiceConfig"
 )
 
 // GitOpsServiceClient is the client API for GitOpsService service.
@@ -656,6 +657,22 @@ type GitOpsServiceClient interface {
 	// RPC only mutates an existing document, it does not create one (use
 	// SyncBundle/git sync to create the initial document).
 	PatchServiceConfig(ctx context.Context, in *PatchServiceConfigRequest, opts ...grpc.CallOption) (*PatchServiceConfigResponse, error)
+	// GetServiceConfig returns a service's current plain config document and
+	// its version, on the same bearer-token-or-SPIFFE-mTLS admin surface every
+	// other GitOpsService RPC uses (bytepunx/authstar-tower#2, bytepunx/signet#38's
+	// "worth a real answer either way" open question — this is that answer: a
+	// dedicated admin-side read RPC, rather than policy-granting a workload's
+	// SPIFFE identity cross-service access on SecretsService.GetServiceConfig,
+	// which would blur the "admin pushes, workload reads its own stuff"
+	// boundary those two services otherwise keep clean). Exists so a caller
+	// that needs to remove specific entries from a nested array (e.g. pruning
+	// stale key generations) can read current contents first, compute exact
+	// indices, then submit a PatchServiceConfig with "test" preconditions
+	// guarding against a concurrent change — PatchServiceConfig's own
+	// "add"+"/-" append trick has no read-free equivalent for targeted
+	// removal. Fails NotFound if no config document exists yet for
+	// namespace/service.
+	GetServiceConfig(ctx context.Context, in *GetServiceConfigRequest, opts ...grpc.CallOption) (*GetServiceConfigResponse, error)
 }
 
 type gitOpsServiceClient struct {
@@ -769,6 +786,16 @@ func (c *gitOpsServiceClient) PatchServiceConfig(ctx context.Context, in *PatchS
 	return out, nil
 }
 
+func (c *gitOpsServiceClient) GetServiceConfig(ctx context.Context, in *GetServiceConfigRequest, opts ...grpc.CallOption) (*GetServiceConfigResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetServiceConfigResponse)
+	err := c.cc.Invoke(ctx, GitOpsService_GetServiceConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GitOpsServiceServer is the server API for GitOpsService service.
 // All implementations must embed UnimplementedGitOpsServiceServer
 // for forward compatibility.
@@ -802,6 +829,22 @@ type GitOpsServiceServer interface {
 	// RPC only mutates an existing document, it does not create one (use
 	// SyncBundle/git sync to create the initial document).
 	PatchServiceConfig(context.Context, *PatchServiceConfigRequest) (*PatchServiceConfigResponse, error)
+	// GetServiceConfig returns a service's current plain config document and
+	// its version, on the same bearer-token-or-SPIFFE-mTLS admin surface every
+	// other GitOpsService RPC uses (bytepunx/authstar-tower#2, bytepunx/signet#38's
+	// "worth a real answer either way" open question — this is that answer: a
+	// dedicated admin-side read RPC, rather than policy-granting a workload's
+	// SPIFFE identity cross-service access on SecretsService.GetServiceConfig,
+	// which would blur the "admin pushes, workload reads its own stuff"
+	// boundary those two services otherwise keep clean). Exists so a caller
+	// that needs to remove specific entries from a nested array (e.g. pruning
+	// stale key generations) can read current contents first, compute exact
+	// indices, then submit a PatchServiceConfig with "test" preconditions
+	// guarding against a concurrent change — PatchServiceConfig's own
+	// "add"+"/-" append trick has no read-free equivalent for targeted
+	// removal. Fails NotFound if no config document exists yet for
+	// namespace/service.
+	GetServiceConfig(context.Context, *GetServiceConfigRequest) (*GetServiceConfigResponse, error)
 	mustEmbedUnimplementedGitOpsServiceServer()
 }
 
@@ -841,6 +884,9 @@ func (UnimplementedGitOpsServiceServer) SyncBundle(grpc.ClientStreamingServer[Sy
 }
 func (UnimplementedGitOpsServiceServer) PatchServiceConfig(context.Context, *PatchServiceConfigRequest) (*PatchServiceConfigResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PatchServiceConfig not implemented")
+}
+func (UnimplementedGitOpsServiceServer) GetServiceConfig(context.Context, *GetServiceConfigRequest) (*GetServiceConfigResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetServiceConfig not implemented")
 }
 func (UnimplementedGitOpsServiceServer) mustEmbedUnimplementedGitOpsServiceServer() {}
 func (UnimplementedGitOpsServiceServer) testEmbeddedByValue()                       {}
@@ -1032,6 +1078,24 @@ func _GitOpsService_PatchServiceConfig_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GitOpsService_GetServiceConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetServiceConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitOpsServiceServer).GetServiceConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitOpsService_GetServiceConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitOpsServiceServer).GetServiceConfig(ctx, req.(*GetServiceConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // GitOpsService_ServiceDesc is the grpc.ServiceDesc for GitOpsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1074,6 +1138,10 @@ var GitOpsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PatchServiceConfig",
 			Handler:    _GitOpsService_PatchServiceConfig_Handler,
+		},
+		{
+			MethodName: "GetServiceConfig",
+			Handler:    _GitOpsService_GetServiceConfig_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
