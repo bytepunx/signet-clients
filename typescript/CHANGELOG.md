@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/bytepunx/signet-clients/compare/typescript-v0.6.0...typescript-v0.7.0) (2026-08-21)
+
+
+### Features
+
+* **typescript:** regenerate for GitOpsService.GetServiceConfig ([09c8922](https://github.com/bytepunx/signet-clients/commit/09c89225a6066be8f36686f79819ce1b61caee47))
+
+
+### Bug Fixes
+
+* **typescript:** dialWorkload holds the event loop open during the SVID fetch ([72feeab](https://github.com/bytepunx/signet-clients/commit/72feeab58644f5435ff8f312a84ab6c7fbd6dc5d))
+
 ## [0.6.0](https://github.com/bytepunx/signet-clients/compare/typescript-v0.5.0...typescript-v0.6.0) (2026-08-15)
 
 
