@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/bytepunx/signet-clients/compare/go/v0.5.0...go/v0.6.0) (2026-08-21)
+
+
+### Features
+
+* **go:** regenerate for GitOpsService.GetServiceConfig ([033ed73](https://github.com/bytepunx/signet-clients/commit/033ed733d4c54ecf87c96292b72b003381c4dab7))
+
 ## [0.5.0](https://github.com/bytepunx/signet-clients/compare/go/v0.4.0...go/v0.5.0) (2026-08-15)
 
 
