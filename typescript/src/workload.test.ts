@@ -6,6 +6,7 @@
 // instance is involved — authorizeTrustDomainMember is exercised against
 // hand-written fake PeerCertificate-shaped objects.
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { test } from "node:test";
 import type { PeerCertificate } from "node:tls";
 import {
@@ -203,4 +204,51 @@ test("retryUntilIdentityIssued does not retry an unrelated error", async () => {
   await assert.rejects(retryUntilIdentityIssued(probe, sleep), (err: unknown) => err === wantErr);
   assert.equal(calls, 1);
   assert.deepEqual(waited, []);
+});
+
+// ---------------------------------------------------------------------------
+// Event-loop keep-alive during the SVID fetch (bytepunx/signet-clients#47)
+//
+// The bug only reproduces when *nothing else* keeps the event loop alive --
+// exactly the condition a real short-lived script/Job calling dialWorkload
+// as one of its first operations is in, and exactly the condition this
+// process's own test runner doesn't recreate (the test harness itself keeps
+// the loop alive). So this exercises the real mechanism -- a referenced
+// timer held across an await backed by an unref'd one, mirroring what
+// `spiffe`'s transport actually does and what dialWorkload now guards
+// against -- in a real, separately-spawned child process, and asserts on
+// that child's actual exit behavior. This can't invoke dialWorkload itself
+// without a real SPIRE workload socket; it proves the keep-alive pattern
+// dialWorkload now wraps its fetch in, isolated from the SPIFFE/gRPC
+// plumbing around it.
+// ---------------------------------------------------------------------------
+
+const UNREFFED_WAIT_SCRIPT = `
+  const timer = setTimeout(() => { console.log("resolved"); }, 200);
+  timer.unref();
+`;
+
+const KEPT_ALIVE_SCRIPT = `
+  const keepAlive = setInterval(() => {}, 1 << 30);
+  const timer = setTimeout(() => {
+    console.log("resolved");
+    clearInterval(keepAlive);
+  }, 200);
+  timer.unref();
+`;
+
+test("without a keep-alive, a process with only an unref'd timer exits before that timer fires (reproduces the bug's mechanism)", () => {
+  const output = execFileSync(process.execPath, ["-e", UNREFFED_WAIT_SCRIPT], { encoding: "utf8" });
+  // The process exits as soon as the event loop is otherwise empty -- the
+  // unref'd timer never gets a chance to fire, so "resolved" is never
+  // logged, and the process exits 0 (a natural, silent drain, not a crash)
+  // in well under the timer's own 200ms delay. This is the exact failure
+  // shape the issue describes: no error, no rejection, just an early,
+  // silent exit.
+  assert.equal(output, "");
+});
+
+test("holding a referenced keep-alive handle across the wait lets the timer fire before exit (the fix dialWorkload now applies)", () => {
+  const output = execFileSync(process.execPath, ["-e", KEPT_ALIVE_SCRIPT], { encoding: "utf8" });
+  assert.equal(output.trim(), "resolved");
 });

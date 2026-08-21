@@ -67,6 +67,18 @@ export interface WorkloadConnection {
  * The fetch itself retries automatically (no opt-in required) if it loses
  * the SPIRE identity-registration-propagation race — see
  * retryUntilIdentityIssued's doc comment.
+ *
+ * Holds the Node event loop open (bytepunx/signet-clients#47) for the
+ * duration of the SVID fetch below. `spiffe`'s own transport
+ * (@protobuf-ts/grpc-transport) leaves its underlying Unix-domain-socket
+ * stream `.unref()`'d — fine for a long-lived server, but this function's
+ * documented, intended use is a short-lived script/Job calling it as one of
+ * its first operations, where nothing else may be scheduled yet. Without
+ * this, Node can conclude the event loop has drained and exit the whole
+ * process with code 0 mid-fetch — no thrown error, no unhandled rejection,
+ * this promise simply never settles. See the issue for the full downstream
+ * reproduction (a Job that silently completed after only its first log
+ * line).
  */
 export async function dialWorkload(opts: DialWorkloadOptions): Promise<WorkloadConnection> {
   const verify = authorizeTrustDomainMember(opts.trustDomain);
@@ -78,11 +90,14 @@ export async function dialWorkload(opts: DialWorkloadOptions): Promise<WorkloadC
     throw new Error(`signet: connect to SPIFFE workload API: ${errMessage(err)}`);
   }
 
+  const keepAlive = setInterval(() => {}, 1 << 30);
   let svid: X509SVID;
   try {
     svid = await retryUntilIdentityIssued(() => fetchFirstX509SVID(workloadClient));
   } catch (err) {
     throw new Error(`signet: fetch X.509 SVID from workload API: ${errMessage(err)}`);
+  } finally {
+    clearInterval(keepAlive);
   }
 
   const creds = credentialsFromSVID(svid, verify);
