@@ -7,11 +7,17 @@
 //! [`dial_workload`] (behind the `spiffe-workload` feature) opens a
 //! SPIFFE-mTLS connection to the workload-facing `SecretsService` listener,
 //! retrying automatically — no opt-in required — if it loses the SPIRE
-//! identity-registration-propagation race described in its doc comment.
+//! identity-registration-propagation race described in its doc comment. Its
+//! `Channel` is also usable with [`gitops_client`] for the subset of
+//! `GitOpsService` reachable this way (`SyncBundle`, `PatchServiceConfig`,
+//! `GetSOPSPublicKey`) without ever holding an admin bearer token
+//! (bytepunx/signet#23, #38, #78) — see [`gitops_client`]'s doc comment and
+//! `examples/gitops_workload.rs`.
 
 use std::net::IpAddr;
 use std::path::Path;
 
+use tonic::codegen::{Body, Bytes, StdError};
 use tonic::service::interceptor::InterceptedService;
 use tonic::service::Interceptor;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
@@ -242,12 +248,50 @@ pub async fn dial_admin(
 }
 
 /// Returns an `AdminService` client bound to `channel`.
-pub fn admin_client(channel: AdminChannel) -> AdminServiceClient<AdminChannel> {
+///
+/// Generic over the underlying `tonic` service type so that both
+/// [`AdminChannel`] (from [`dial_admin`], bearer-token auth) and a plain
+/// [`Channel`] (from `dial_workload`, behind the `spiffe-workload` feature)
+/// work as `channel` — the bound is exactly what the generated
+/// `AdminServiceClient<T>::new` requires. In practice signet's server only
+/// accepts admin-token auth for `AdminService` itself, so `dial_workload`'s
+/// channel is mainly useful with [`gitops_client`], not this function; the
+/// generic signature is kept the same as `gitops_client`'s for consistency.
+pub fn admin_client<T>(channel: T) -> AdminServiceClient<T>
+where
+    T: tonic::client::GrpcService<tonic::body::Body>,
+    T::Error: Into<StdError>,
+    T::ResponseBody: Body<Data = Bytes> + Send + 'static,
+    <T::ResponseBody as Body>::Error: Into<StdError> + Send,
+{
     AdminServiceClient::new(channel)
 }
 
 /// Returns a `GitOpsService` client bound to `channel`.
-pub fn gitops_client(channel: AdminChannel) -> GitOpsServiceClient<AdminChannel> {
+///
+/// `channel` may come from either [`dial_admin`] ([`AdminChannel`]:
+/// bearer-token auth, full access) or `dial_workload` (behind the
+/// `spiffe-workload` feature; a plain [`Channel`]: SPIFFE mTLS, the caller's
+/// own identity) — signet's server accepts both for `SyncBundle`,
+/// `PatchServiceConfig`, and `GetSOPSPublicKey`, letting a workload
+/// self-service its own bundle/config writes and fetch the active SOPS
+/// public key without ever holding an admin token (bytepunx/signet#23, #38,
+/// #78). Cross-namespace/service writes still require an explicit
+/// `CreatePolicy` grant from an operator. See `examples/gitops_workload.rs`
+/// for a runnable demonstration.
+///
+/// This function is generic over the underlying `tonic` service type,
+/// rather than fixed to [`AdminChannel`], purely so both channel kinds
+/// type-check here — the trait bound below is copied verbatim from the
+/// `where` clause `tonic-build` generates on
+/// `GitOpsServiceClient<T>::new`/`with_origin`/etc., not hand-picked.
+pub fn gitops_client<T>(channel: T) -> GitOpsServiceClient<T>
+where
+    T: tonic::client::GrpcService<tonic::body::Body>,
+    T::Error: Into<StdError>,
+    T::ResponseBody: Body<Data = Bytes> + Send + 'static,
+    <T::ResponseBody as Body>::Error: Into<StdError> + Send,
+{
     GitOpsServiceClient::new(channel)
 }
 
@@ -460,6 +504,14 @@ mod workload {
     /// `tlsconfig.AuthorizeMemberOf` — connecting to a server whose identity
     /// is outside that trust domain fails the handshake.
     ///
+    /// The returned [`Channel`](tonic::transport::Channel) is also usable
+    /// with [`gitops_client`](super::gitops_client) for the subset of
+    /// `GitOpsService` reachable this way (`SyncBundle`,
+    /// `PatchServiceConfig`, `GetSOPSPublicKey`) without needing an admin
+    /// bearer token at all. See
+    /// [`gitops_client`](super::gitops_client)'s doc comment and
+    /// `examples/gitops_workload.rs`.
+    ///
     /// `dial_workload` retries automatically — no opt-in required — if the
     /// Workload API reports "no identity issued" before it can hand back a
     /// connection. This is a real, verified-in-production race, not
@@ -628,6 +680,20 @@ mod workload {
     mod tests {
         use super::*;
         use std::sync::atomic::{AtomicUsize, Ordering};
+
+        // Compile-time proof that dial_workload's return type — a plain
+        // `tonic::transport::Channel`, per its signature above — satisfies
+        // whatever bound gitops_client/admin_client require. This function
+        // is never called; if dial_workload's return type ever stopped
+        // matching that bound, `cargo test --all-features` (which compiles
+        // this module) would fail to build, catching the regression this
+        // whole change exists to fix without needing a live signet server
+        // or SPIRE agent.
+        #[allow(dead_code)]
+        fn _dial_workload_channel_satisfies_gitops_and_admin_client_bound(channel: Channel) {
+            let _ = super::super::gitops_client(channel.clone());
+            let _ = super::super::admin_client(channel);
+        }
 
         fn no_identity_issued() -> spiffe::WorkloadApiError {
             spiffe::WorkloadApiError::NoIdentityIssued
@@ -922,6 +988,29 @@ w8cAzA==\n\
             .unwrap_err();
         assert!(matches!(err, ClientError::EmptyToken));
         assert_eq!(err.to_string(), "token must not be empty");
+    }
+
+    #[tokio::test]
+    async fn gitops_client_and_admin_client_accept_both_channel_kinds() {
+        // gitops_client/admin_client must accept both the AdminChannel
+        // dial_admin returns (Channel + TokenInterceptor) and the plain
+        // Channel dial_workload returns — that's the whole point of making
+        // them generic. `Endpoint::connect_lazy` builds a real Channel
+        // without touching the network (it only dials on first RPC), so
+        // this actually constructs both client types over both channel
+        // kinds rather than merely type-checking that it's possible.
+        let plain_channel: Channel = Endpoint::from_static("http://localhost:1").connect_lazy();
+        let _gitops_over_plain_channel = gitops_client(plain_channel.clone());
+        let _admin_over_plain_channel = admin_client(plain_channel);
+
+        let header_value: tonic::metadata::MetadataValue<tonic::metadata::Ascii> =
+            "Bearer test-token".parse().unwrap();
+        let admin_channel: AdminChannel = InterceptedService::new(
+            Endpoint::from_static("http://localhost:1").connect_lazy(),
+            TokenInterceptor { header_value },
+        );
+        let _gitops_over_admin_channel = gitops_client(admin_channel.clone());
+        let _admin_over_admin_channel = admin_client(admin_channel);
     }
 
     #[test]
