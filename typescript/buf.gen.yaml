@@ -2,7 +2,12 @@ version: v2
 plugins:
   # ts-proto generates idiomatic TypeScript types plus an optional @grpc/grpc-js
   # client in one pass, so no separate grpc plugin is needed for Node targets.
-  - remote: buf.build/community/stephenh-ts-proto
+  # Pinned to the exact plugin version this module was last generated and
+  # verified against (bytepunx/signet-clients#64) — an unpinned `remote:`
+  # reference floats on whatever the BSR currently serves as latest, so a
+  # plugin release with different generated-code shape could silently break
+  # every future `buf generate` here. Bump deliberately, review the diff.
+  - remote: buf.build/community/stephenh-ts-proto:v2.12.1
     out: src/gen
     opt:
       - outputServices=grpc-js
@@ -12,7 +17,14 @@ plugins:
       # explicit extensions on relative imports.
       - importSuffix=.js
 # Pinned independently of signet's own buf.gen.yaml and the other language
-# clients in this repo. Update to a specific :vX.Y.Z label once tagged
-# releases exist.
+# clients in this repo, to the first tagged signet-proto release
+# (bytepunx/signet-clients#64 — this comment previously said "once tagged
+# releases exist"; one now does). An unpinned module reference floats on
+# signet-proto's latest commit, so every `buf generate` here silently picked
+# up upstream schema changes — including ones not yet released/tested — and
+# CI's "src/gen must match a fresh buf generate" check broke for reasons
+# entirely unrelated to any change in this repo. Bump deliberately when a
+# newer signet-proto release is ready to adopt, and commit the regenerated
+# src/gen in the same change.
 inputs:
-  - module: buf.build/bytepunx/signet-proto
+  - module: buf.build/bytepunx/signet-proto:v0.2.0
