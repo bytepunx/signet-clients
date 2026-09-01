@@ -1,11 +1,23 @@
 version: v2
 plugins:
-  - remote: buf.build/protocolbuffers/csharp
+  # Plugin versions pinned to what gen/ was last generated and verified
+  # against (bytepunx/signet-clients#64) — an unpinned `remote:` reference
+  # floats on whatever the BSR currently serves as latest, so a plugin
+  # release with a different generated-code shape could silently break every
+  # future `buf generate` here. Bump deliberately, review the diff.
+  - remote: buf.build/protocolbuffers/csharp:v36.1
     out: gen
-  - remote: buf.build/grpc/csharp
+  - remote: buf.build/grpc/csharp:v1.83.1
     out: gen
 # Pinned independently of signet's own buf.gen.yaml and the other language
-# clients in this repo. Update to a specific :vX.Y.Z label once tagged
-# releases exist.
+# clients in this repo, to a tagged signet-proto release
+# (bytepunx/signet-clients#64 — this comment previously said "once tagged
+# releases exist"; some now do. v0.2.0 turned out to be stale — it predates
+# GitOpsService.GetServiceConfig, already relied on elsewhere — so this is
+# pinned to v0.3.0, the release that actually includes it). An unpinned
+# module reference floats on signet-proto's latest commit, so every
+# `buf generate` here silently picked up upstream schema changes —
+# including ones not yet released/tested. Bump deliberately when a newer
+# signet-proto release is ready to adopt.
 inputs:
-  - module: buf.build/bytepunx/signet-proto
+  - module: buf.build/bytepunx/signet-proto:v0.3.0

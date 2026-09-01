@@ -17,14 +17,17 @@ plugins:
       # explicit extensions on relative imports.
       - importSuffix=.js
 # Pinned independently of signet's own buf.gen.yaml and the other language
-# clients in this repo, to the first tagged signet-proto release
+# clients in this repo, to a tagged signet-proto release
 # (bytepunx/signet-clients#64 — this comment previously said "once tagged
-# releases exist"; one now does). An unpinned module reference floats on
-# signet-proto's latest commit, so every `buf generate` here silently picked
-# up upstream schema changes — including ones not yet released/tested — and
-# CI's "src/gen must match a fresh buf generate" check broke for reasons
-# entirely unrelated to any change in this repo. Bump deliberately when a
-# newer signet-proto release is ready to adopt, and commit the regenerated
-# src/gen in the same change.
+# releases exist"; some now do. v0.2.0 turned out to be stale — it predates
+# GitOpsService.GetServiceConfig, already relied on elsewhere — so this is
+# pinned to v0.3.0, the release that actually includes it). An unpinned
+# module reference floats on signet-proto's latest commit, so every
+# `buf generate` here silently picked up upstream schema changes —
+# including ones not yet released/tested — and CI's "src/gen must match a
+# fresh buf generate" check broke for reasons entirely unrelated to any
+# change in this repo. Bump deliberately when a newer signet-proto release
+# is ready to adopt, and commit the regenerated src/gen in the same change.
+# bytepunx/signet-clients#67 automates checking for and proposing this bump.
 inputs:
-  - module: buf.build/bytepunx/signet-proto:v0.2.0
+  - module: buf.build/bytepunx/signet-proto:v0.3.0

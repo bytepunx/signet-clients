@@ -17,16 +17,29 @@ managed:
     - file_option: go_package_prefix
       value: github.com/bytepunx/signet-clients/go/gen
 plugins:
-  - remote: buf.build/protocolbuffers/go
+  # Plugin versions pinned to what gen/ was last generated and verified
+  # against (bytepunx/signet-clients#64) — an unpinned `remote:` reference
+  # floats on whatever the BSR currently serves as latest, so a plugin
+  # release with a different generated-code shape could silently break every
+  # future `buf generate` here. Bump deliberately, review the diff.
+  - remote: buf.build/protocolbuffers/go:v1.36.12
     out: gen
     opt:
       - paths=source_relative
-  - remote: buf.build/grpc/go
+  - remote: buf.build/grpc/go:v1.6.2
     out: gen
     opt:
       - paths=source_relative
 # Pinned independently of signet's own buf.gen.yaml — this client can track a
-# different signet-proto version than the server. Update to a specific
-# :vX.Y.Z label once tagged releases exist.
+# different signet-proto version than the server — to a tagged signet-proto
+# release (bytepunx/signet-clients#64 — this comment previously said "once
+# tagged releases exist"; some now do. v0.2.0 turned out to be stale — it
+# predates GitOpsService.GetServiceConfig, already relied on elsewhere — so
+# this is pinned to v0.3.0, the release that actually includes it). An
+# unpinned module reference floats on signet-proto's latest commit, so CI's
+# "gen/ must match a fresh buf generate" check could break for reasons
+# entirely unrelated to any change in this repo. Bump deliberately when a
+# newer signet-proto release is ready to adopt, and commit the regenerated
+# gen/ in the same change.
 inputs:
-  - module: buf.build/bytepunx/signet-proto
+  - module: buf.build/bytepunx/signet-proto:v0.3.0
