@@ -455,6 +455,33 @@ export interface PatchServiceConfigResponse {
   version: number;
 }
 
+export interface GetServiceConfigRequest {
+  namespace: string;
+  service: string;
+}
+
+export interface GetServiceConfigResponse {
+  /**
+   * content is the full config document as stored, e.g. to compute exact
+   * array indices before submitting a targeted PatchServiceConfig. The race
+   * between this read and a follow-up patch is guarded by PatchServiceConfig
+   * itself, not by this field -- a "test" operation asserting the exact
+   * value at the specific path about to be removed (built from this same
+   * content) fails the whole patch if anything changed in between, rather
+   * than a document-level version check (RFC 6902 has no such concept; the
+   * store's version is per-document metadata, not part of the JSON content
+   * a "test" op could reference).
+   */
+  content:
+    | any
+    | undefined;
+  /**
+   * version is the config document's current version (informational --
+   * matches PatchServiceConfigResponse's own field of the same name/meaning).
+   */
+  version: number;
+}
+
 function createBaseUnsealKeyRequest(): UnsealKeyRequest {
   return { key: new Uint8Array(0) };
 }
@@ -5263,6 +5290,176 @@ export const PatchServiceConfigResponse: MessageFns<PatchServiceConfigResponse> 
   },
 };
 
+function createBaseGetServiceConfigRequest(): GetServiceConfigRequest {
+  return { namespace: "", service: "" };
+}
+
+export const GetServiceConfigRequest: MessageFns<GetServiceConfigRequest> = {
+  encode(message: GetServiceConfigRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.namespace !== "") {
+      writer.uint32(10).string(message.namespace);
+    }
+    if (message.service !== "") {
+      writer.uint32(18).string(message.service);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetServiceConfigRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseGetServiceConfigRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.namespace = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.service = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): GetServiceConfigRequest {
+    return {
+      namespace: isSet(object.namespace) ? globalThis.String(object.namespace) : "",
+      service: isSet(object.service) ? globalThis.String(object.service) : "",
+    };
+  },
+
+  toJSON(message: GetServiceConfigRequest): unknown {
+    const obj: any = {};
+    if (message.namespace !== "") {
+      obj.namespace = message.namespace;
+    }
+    if (message.service !== "") {
+      obj.service = message.service;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<GetServiceConfigRequest>): GetServiceConfigRequest {
+    return GetServiceConfigRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<GetServiceConfigRequest>): GetServiceConfigRequest {
+    const message = createBaseGetServiceConfigRequest();
+    message.namespace = object.namespace ?? "";
+    message.service = object.service ?? "";
+    return message;
+  },
+};
+
+function createBaseGetServiceConfigResponse(): GetServiceConfigResponse {
+  return { content: undefined, version: 0 };
+}
+
+export const GetServiceConfigResponse: MessageFns<GetServiceConfigResponse> = {
+  encode(message: GetServiceConfigResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.content !== undefined) {
+      Value.encode(Value.wrap(message.content), writer.uint32(10).fork()).join();
+    }
+    if (message.version !== 0) {
+      writer.uint32(16).int32(message.version);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetServiceConfigResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseGetServiceConfigResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.content = Value.unwrap(Value.decode(reader, reader.uint32()));
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.version = reader.int32();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): GetServiceConfigResponse {
+    return {
+      content: isSet(object?.content) ? object.content : undefined,
+      version: isSet(object.version) ? globalThis.Number(object.version) : 0,
+    };
+  },
+
+  toJSON(message: GetServiceConfigResponse): unknown {
+    const obj: any = {};
+    if (message.content !== undefined) {
+      obj.content = message.content;
+    }
+    if (message.version !== 0) {
+      obj.version = Math.round(message.version);
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<GetServiceConfigResponse>): GetServiceConfigResponse {
+    return GetServiceConfigResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<GetServiceConfigResponse>): GetServiceConfigResponse {
+    const message = createBaseGetServiceConfigResponse();
+    message.content = object.content ?? undefined;
+    message.version = object.version ?? 0;
+    return message;
+  },
+};
+
 /** AdminService handles operator lifecycle operations: unsealing, sealing, and status. */
 export type AdminServiceService = typeof AdminServiceService;
 export const AdminServiceService = {
@@ -5808,6 +6005,34 @@ export const GitOpsServiceService = {
       Buffer.from(PatchServiceConfigResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer): PatchServiceConfigResponse => PatchServiceConfigResponse.decode(value),
   },
+  /**
+   * GetServiceConfig returns a service's current plain config document and
+   * its version, on the same bearer-token-or-SPIFFE-mTLS admin surface every
+   * other GitOpsService RPC uses (bytepunx/authstar-tower#2, bytepunx/signet#38's
+   * "worth a real answer either way" open question — this is that answer: a
+   * dedicated admin-side read RPC, rather than policy-granting a workload's
+   * SPIFFE identity cross-service access on SecretsService.GetServiceConfig,
+   * which would blur the "admin pushes, workload reads its own stuff"
+   * boundary those two services otherwise keep clean). Exists so a caller
+   * that needs to remove specific entries from a nested array (e.g. pruning
+   * stale key generations) can read current contents first, compute exact
+   * indices, then submit a PatchServiceConfig with "test" preconditions
+   * guarding against a concurrent change — PatchServiceConfig's own
+   * "add"+"/-" append trick has no read-free equivalent for targeted
+   * removal. Fails NotFound if no config document exists yet for
+   * namespace/service.
+   */
+  getServiceConfig: {
+    path: "/admin.v1.GitOpsService/GetServiceConfig" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: GetServiceConfigRequest): Buffer =>
+      Buffer.from(GetServiceConfigRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): GetServiceConfigRequest => GetServiceConfigRequest.decode(value),
+    responseSerialize: (value: GetServiceConfigResponse): Buffer =>
+      Buffer.from(GetServiceConfigResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): GetServiceConfigResponse => GetServiceConfigResponse.decode(value),
+  },
 } as const;
 
 export interface GitOpsServiceServer extends UntypedServiceImplementation {
@@ -5842,6 +6067,24 @@ export interface GitOpsServiceServer extends UntypedServiceImplementation {
    * SyncBundle/git sync to create the initial document).
    */
   patchServiceConfig: handleUnaryCall<PatchServiceConfigRequest, PatchServiceConfigResponse>;
+  /**
+   * GetServiceConfig returns a service's current plain config document and
+   * its version, on the same bearer-token-or-SPIFFE-mTLS admin surface every
+   * other GitOpsService RPC uses (bytepunx/authstar-tower#2, bytepunx/signet#38's
+   * "worth a real answer either way" open question — this is that answer: a
+   * dedicated admin-side read RPC, rather than policy-granting a workload's
+   * SPIFFE identity cross-service access on SecretsService.GetServiceConfig,
+   * which would blur the "admin pushes, workload reads its own stuff"
+   * boundary those two services otherwise keep clean). Exists so a caller
+   * that needs to remove specific entries from a nested array (e.g. pruning
+   * stale key generations) can read current contents first, compute exact
+   * indices, then submit a PatchServiceConfig with "test" preconditions
+   * guarding against a concurrent change — PatchServiceConfig's own
+   * "add"+"/-" append trick has no read-free equivalent for targeted
+   * removal. Fails NotFound if no config document exists yet for
+   * namespace/service.
+   */
+  getServiceConfig: handleUnaryCall<GetServiceConfigRequest, GetServiceConfigResponse>;
 }
 
 export interface GitOpsServiceClient extends Client {
@@ -6016,6 +6259,38 @@ export interface GitOpsServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: PatchServiceConfigResponse) => void,
+  ): ClientUnaryCall;
+  /**
+   * GetServiceConfig returns a service's current plain config document and
+   * its version, on the same bearer-token-or-SPIFFE-mTLS admin surface every
+   * other GitOpsService RPC uses (bytepunx/authstar-tower#2, bytepunx/signet#38's
+   * "worth a real answer either way" open question — this is that answer: a
+   * dedicated admin-side read RPC, rather than policy-granting a workload's
+   * SPIFFE identity cross-service access on SecretsService.GetServiceConfig,
+   * which would blur the "admin pushes, workload reads its own stuff"
+   * boundary those two services otherwise keep clean). Exists so a caller
+   * that needs to remove specific entries from a nested array (e.g. pruning
+   * stale key generations) can read current contents first, compute exact
+   * indices, then submit a PatchServiceConfig with "test" preconditions
+   * guarding against a concurrent change — PatchServiceConfig's own
+   * "add"+"/-" append trick has no read-free equivalent for targeted
+   * removal. Fails NotFound if no config document exists yet for
+   * namespace/service.
+   */
+  getServiceConfig(
+    request: GetServiceConfigRequest,
+    callback: (error: ServiceError | null, response: GetServiceConfigResponse) => void,
+  ): ClientUnaryCall;
+  getServiceConfig(
+    request: GetServiceConfigRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: GetServiceConfigResponse) => void,
+  ): ClientUnaryCall;
+  getServiceConfig(
+    request: GetServiceConfigRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: GetServiceConfigResponse) => void,
   ): ClientUnaryCall;
 }
 
