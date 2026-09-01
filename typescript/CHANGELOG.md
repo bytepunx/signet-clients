@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/bytepunx/signet-clients/compare/typescript-v0.7.0...typescript-v0.8.0) (2026-09-01)
+
+
+### Features
+
+* **typescript:** expose GitOpsService over workload SPIFFE mTLS ([3790225](https://github.com/bytepunx/signet-clients/commit/3790225a8974ad143c61b4e8712f573d6d1cf26e))
+
 ## [0.7.0](https://github.com/bytepunx/signet-clients/compare/typescript-v0.6.0...typescript-v0.7.0) (2026-08-21)
 
 
