@@ -16,9 +16,21 @@
 // registration reactively, and propagation to the local agent this dials
 // over workloadSocket takes a few seconds — a freshly-created pod/Job's
 // very first dial can lose that race outright).
+//
+// The credential-building step (SVID fetch + mTLS ChannelCredentials
+// construction) dialWorkload uses internally is also exported standalone as
+// workloadChannelCredentials, so a caller can bind the same workload
+// identity to a different grpc-js client — most notably
+// GitOpsServiceClient/AdminServiceClient for the subset of GitOpsService
+// signet's server accepts a workload's own SPIFFE identity for (SyncBundle,
+// PatchServiceConfig, GetSOPSPublicKey — bytepunx/signet#23, #38, #78).
+// dialWorkloadGitOps wraps that up the same way dialWorkload does for
+// SecretsServiceClient. See examples/gitops-workload for a runnable
+// demonstration.
 import type { PeerCertificate } from "node:tls";
 import { type ChannelCredentials, type ClientOptions, credentials as grpcCredentials } from "@grpc/grpc-js";
 import { createClient, parseCertificateBundle, type X509SVID } from "spiffe";
+import { GitOpsServiceClient } from "./gen/admin/v1/admin.js";
 import { SecretsServiceClient } from "./gen/signet/v1/secrets.js";
 import { errMessage } from "./errors.js";
 
@@ -53,16 +65,37 @@ export interface WorkloadConnection {
   close(): void;
 }
 
+export interface WorkloadGitOpsConnection {
+  client: GitOpsServiceClient;
+  /** Closes the underlying gRPC channel. Idempotent. */
+  close(): void;
+}
+
 /**
- * dialWorkload fetches a single X.509 SVID and trust bundle from the local
- * SPIFFE Workload API, then constructs a SecretsServiceClient authenticated
- * via mTLS, verifying the server's presented SPIFFE ID is a member of
- * trustDomain (mirroring go-spiffe's tlsconfig.AuthorizeMemberOf).
+ * workloadChannelCredentials fetches a single X.509 SVID and trust bundle
+ * from the local SPIFFE Workload API and builds mTLS ChannelCredentials
+ * authenticated as this workload's own SPIFFE identity, verifying the
+ * server's presented SPIFFE ID is a member of trustDomain (mirroring
+ * go-spiffe's tlsconfig.AuthorizeMemberOf). This is exactly the
+ * credential-building step dialWorkload uses internally to construct its
+ * SecretsServiceClient — exposed standalone so a caller can build any other
+ * grpc-js client bound to the same identity instead, e.g.
+ * `new GitOpsServiceClient(opts.address, credentials, opts.channelOptions)`
+ * (or `AdminServiceClient`).
  *
- * Unlike go-spiffe's X509Source, this fetches credentials once at dial
- * time — there is no background rotation. See the README for why, and for
- * the recommended alternative (supply your own ChannelCredentials to
- * secretsClient()) if that gap matters for your deployment.
+ * signet's server accepts a workload's own SPIFFE identity — no admin
+ * bearer token required — for `SyncBundle`, `PatchServiceConfig`, and
+ * `GetSOPSPublicKey`, letting a workload self-service its own bundle/config
+ * writes and fetch the active SOPS public key (bytepunx/signet#23, #38,
+ * #78). Cross-namespace/service writes still require an explicit
+ * `CreatePolicy` grant from an operator; every other GitOpsService/
+ * AdminService RPC remains reachable only via the bearer-token path
+ * (dialAdmin/gitOpsClient in client.ts). See dialWorkloadGitOps for the
+ * identical convenience dialWorkload provides for SecretsServiceClient, and
+ * examples/gitops-workload for a runnable demonstration.
+ *
+ * Unlike go-spiffe's X509Source, this fetches credentials once per call —
+ * there is no background rotation. See the README for why.
  *
  * The fetch itself retries automatically (no opt-in required) if it loses
  * the SPIRE identity-registration-propagation race — see
@@ -80,7 +113,7 @@ export interface WorkloadConnection {
  * reproduction (a Job that silently completed after only its first log
  * line).
  */
-export async function dialWorkload(opts: DialWorkloadOptions): Promise<WorkloadConnection> {
+export async function workloadChannelCredentials(opts: DialWorkloadOptions): Promise<ChannelCredentials> {
   const verify = authorizeTrustDomainMember(opts.trustDomain);
 
   let workloadClient;
@@ -100,8 +133,63 @@ export async function dialWorkload(opts: DialWorkloadOptions): Promise<WorkloadC
     clearInterval(keepAlive);
   }
 
-  const creds = credentialsFromSVID(svid, verify);
+  return credentialsFromSVID(svid, verify);
+}
+
+/**
+ * dialWorkload fetches a single X.509 SVID and trust bundle from the local
+ * SPIFFE Workload API (via workloadChannelCredentials, also exported), then
+ * constructs a SecretsServiceClient authenticated via mTLS, verifying the
+ * server's presented SPIFFE ID is a member of trustDomain (mirroring
+ * go-spiffe's tlsconfig.AuthorizeMemberOf).
+ *
+ * If you need a different client bound to the same workload identity —
+ * most notably GitOpsServiceClient/AdminServiceClient for the subset of
+ * GitOpsService signet's server accepts a workload's own SPIFFE identity
+ * for (`SyncBundle`, `PatchServiceConfig`, `GetSOPSPublicKey` — no admin
+ * bearer token needed; bytepunx/signet#23, #38, #78) — call
+ * workloadChannelCredentials directly and construct that client yourself,
+ * or use dialWorkloadGitOps for the same convenience this function provides
+ * for SecretsServiceClient. Cross-namespace/service writes still require an
+ * explicit `CreatePolicy` grant from an operator. See
+ * examples/gitops-workload for a runnable demonstration.
+ *
+ * Unlike go-spiffe's X509Source, this fetches credentials once at dial
+ * time — there is no background rotation. See the README for why, and for
+ * the recommended alternative (supply your own ChannelCredentials to
+ * secretsClient()) if that gap matters for your deployment.
+ *
+ * The fetch itself retries automatically (no opt-in required) if it loses
+ * the SPIRE identity-registration-propagation race — see
+ * retryUntilIdentityIssued's doc comment. Holds the Node event loop open
+ * for the duration of that fetch — see workloadChannelCredentials's doc
+ * comment (bytepunx/signet-clients#47).
+ */
+export async function dialWorkload(opts: DialWorkloadOptions): Promise<WorkloadConnection> {
+  const creds = await workloadChannelCredentials(opts);
   const client = new SecretsServiceClient(opts.address, creds, opts.channelOptions);
+  return {
+    client,
+    close: () => client.close(),
+  };
+}
+
+/**
+ * dialWorkloadGitOps is dialWorkload's counterpart for GitOpsServiceClient:
+ * it builds the identical workload-mTLS ChannelCredentials via
+ * workloadChannelCredentials and binds them to a GitOpsServiceClient rather
+ * than a SecretsServiceClient. Only the subset of GitOpsService signet's
+ * server accepts a workload's own SPIFFE identity for is reachable this
+ * way — `SyncBundle`, `PatchServiceConfig`, `GetSOPSPublicKey`
+ * (bytepunx/signet#23, #38, #78); every other GitOpsService/AdminService RPC
+ * still requires dialAdmin/gitOpsClient's bearer-token path in client.ts.
+ * Cross-namespace/service writes still require an explicit `CreatePolicy`
+ * grant from an operator. See examples/gitops-workload for a runnable
+ * demonstration.
+ */
+export async function dialWorkloadGitOps(opts: DialWorkloadOptions): Promise<WorkloadGitOpsConnection> {
+  const creds = await workloadChannelCredentials(opts);
+  const client = new GitOpsServiceClient(opts.address, creds, opts.channelOptions);
   return {
     client,
     close: () => client.close(),

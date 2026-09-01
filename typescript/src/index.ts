@@ -19,6 +19,8 @@ export {
 
 export {
   dialWorkload,
+  dialWorkloadGitOps,
+  workloadChannelCredentials,
   authorizeTrustDomainMember,
   credentialsFromSVID,
   derToPem,
@@ -29,6 +31,7 @@ export {
   type CheckServerIdentityCallback,
   type DialWorkloadOptions,
   type WorkloadConnection,
+  type WorkloadGitOpsConnection,
 } from "./workload.js";
 
 export {

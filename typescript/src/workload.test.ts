@@ -5,15 +5,34 @@
 // them (see ../README.md). No real certificate material, socket, or SPIRE
 // instance is involved — authorizeTrustDomainMember is exercised against
 // hand-written fake PeerCertificate-shaped objects.
+//
+// The credentialsFromSVID/workloadChannelCredentials coverage further down
+// (bytepunx/signet-clients gitops-workload-mtls-examples) is the exception:
+// grpc-js's ChannelCredentials.createSsl calls straight into Node's
+// tls.createSecureContext, which really does parse the PEM it's given, and
+// parseCertificateBundle (from `spiffe`) does real ASN.1 DER parsing before
+// that — hand-written fake bytes wouldn't survive either step the way a fake
+// PeerCertificate survives authorizeTrustDomainMember. generateSelfSignedSVID
+// below builds one real (if minimal) self-signed certificate via
+// @peculiar/x509 for that reason. Still no socket or SPIRE instance: this
+// never calls dialWorkload/workloadChannelCredentials's SVID-fetch path,
+// only the pure credential-building step downstream of a (fabricated) SVID.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { test } from "node:test";
 import type { PeerCertificate } from "node:tls";
+import { Crypto } from "@peculiar/webcrypto";
+import * as x509 from "@peculiar/x509";
+import type { X509SVID } from "spiffe";
+import { AdminServiceClient, GitOpsServiceClient } from "./gen/admin/v1/admin.js";
+import { SecretsServiceClient } from "./gen/signet/v1/secrets.js";
 import {
   authorizeTrustDomainMember,
+  credentialsFromSVID,
   derToPem,
   isNoIdentityIssuedErr,
   retryUntilIdentityIssued,
+  workloadChannelCredentials,
   workloadDialBackoffMs,
   workloadDialMaxAttempts,
 } from "./workload.js";
@@ -91,6 +110,100 @@ test("derToPem wraps base64 with the given PEM label and 64-column lines", () =>
 
   const roundTripped = Buffer.from(body.join(""), "base64");
   assert.ok(roundTripped.equals(der), "expected base64 round-trip to reproduce the original DER bytes");
+});
+
+// ---------------------------------------------------------------------------
+// GitOps-over-workload-mTLS credential exposure
+// (bytepunx/signet-clients gitops-workload-mtls-examples, bytepunx/signet#23,
+// #38, #78)
+//
+// dialWorkload used to build its ChannelCredentials internally and never
+// hand them back, so a caller who wanted a GitOpsServiceClient/
+// AdminServiceClient authenticated the same way had no way to get there
+// short of duplicating the whole SVID-fetch-with-retry + credential-build
+// dance themselves. workloadChannelCredentials is that step, exported
+// standalone; dialWorkload now calls it internally (proving existing
+// callers see no behavior change), and dialWorkloadGitOps mirrors
+// dialWorkload's own ergonomics for GitOpsServiceClient specifically.
+// ---------------------------------------------------------------------------
+
+// @peculiar/x509 needs a WebCrypto implementation registered before use.
+// Node's own `node:crypto` webcrypto export has TypeScript-incompatible
+// (though runtime-compatible) CryptoKey/KeyUsage types against the DOM lib
+// @peculiar/x509's type declarations target, so this uses @peculiar/webcrypto
+// instead — the same package `spiffe` itself registers internally (see its
+// initCryptoProvider) for the identical reason.
+const webcrypto = new Crypto();
+x509.cryptoProvider.set(webcrypto);
+
+/**
+ * Builds a real (self-signed, ECDSA P-256) X509SVID-shaped object for
+ * exercising credentialsFromSVID/workloadChannelCredentials against actual
+ * ASN.1 DER certificate material. Only the shape a SPIRE agent would hand
+ * back over the Workload API matters here (parseCertificateBundle and
+ * tls.createSecureContext both do real parsing of these bytes) — this
+ * doesn't need to be a certificate any real CA or trust bundle would
+ * recognize, since nothing in this suite performs an actual TLS handshake.
+ */
+async function generateSelfSignedSVID(spiffeId: string): Promise<X509SVID> {
+  const keys = await webcrypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const cert = await x509.X509CertificateGenerator.createSelfSigned({
+    serialNumber: "01",
+    name: "CN=signet-workload-test",
+    notBefore: new Date(),
+    notAfter: new Date(Date.now() + 60_000),
+    signingAlgorithm: { name: "ECDSA", hash: "SHA-256" },
+    keys,
+    extensions: [new x509.SubjectAlternativeNameExtension([{ type: "url", value: spiffeId }])],
+  });
+  const pkcs8 = await webcrypto.subtle.exportKey("pkcs8", keys.privateKey);
+  return {
+    spiffeId,
+    x509Svid: new Uint8Array(cert.rawData),
+    x509SvidKey: new Uint8Array(pkcs8),
+    bundle: new Uint8Array(cert.rawData),
+    hint: "",
+  };
+}
+
+test("credentialsFromSVID's output (exactly what workloadChannelCredentials resolves to) constructs GitOpsServiceClient, AdminServiceClient, and SecretsServiceClient without connecting", async () => {
+  const svid = await generateSelfSignedSVID("spiffe://example.org/ns/default/sa/signet");
+  const verify = authorizeTrustDomainMember("example.org");
+  const creds = credentialsFromSVID(svid, verify);
+
+  // No live network involved: grpc-js clients are lazy and don't connect
+  // until an RPC is actually invoked (mirroring client.test.ts's
+  // "constructs a client without connecting" pattern for the bearer-token
+  // path). Constructing successfully here is exactly what a caller of
+  // workloadChannelCredentials would do to reach GitOpsService/AdminService
+  // over this workload's own SPIFFE identity instead of an admin token.
+  const gitops = new GitOpsServiceClient("localhost:8443", creds);
+  const admin = new AdminServiceClient("localhost:8443", creds);
+  const secrets = new SecretsServiceClient("localhost:8443", creds);
+  gitops.close();
+  admin.close();
+  secrets.close();
+});
+
+test("workloadChannelCredentials wraps a workload API connection failure with a clear, prefixed message", async () => {
+  const originalSocketEnv = process.env.SPIFFE_ENDPOINT_SOCKET;
+  delete process.env.SPIFFE_ENDPOINT_SOCKET;
+  try {
+    // No workloadSocket option and no SPIFFE_ENDPOINT_SOCKET env var: `spiffe`'s
+    // createClient throws synchronously before any socket is touched, letting
+    // this assert on workloadChannelCredentials's own error-wrapping without
+    // opening a connection or needing a real (or fake) Workload API.
+    await assert.rejects(
+      workloadChannelCredentials({ address: "localhost:8443", trustDomain: "example.org" }),
+      /signet: connect to SPIFFE workload API:/,
+    );
+  } finally {
+    if (originalSocketEnv === undefined) {
+      delete process.env.SPIFFE_ENDPOINT_SOCKET;
+    } else {
+      process.env.SPIFFE_ENDPOINT_SOCKET = originalSocketEnv;
+    }
+  }
 });
 
 // ---------------------------------------------------------------------------
