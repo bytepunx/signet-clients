@@ -63,6 +63,12 @@ const workloadDialMaxAttempts = len(workloadDialBackoff) + 1
 // match the trust domain of the target signet instance. The returned closer
 // must be closed alongside the connection to release the X509Source.
 //
+// The returned conn is a plain *grpc.ClientConn — pass it to SecretsClient
+// for the workload-facing SecretsService, or to GitOpsClient for the subset
+// of GitOpsService reachable this way (SyncBundle, PatchServiceConfig,
+// GetSOPSPublicKey) without needing an admin bearer token at all. See
+// GitOpsClient's doc comment and examples/gitops-workload.
+//
 // DialWorkload retries automatically — no opt-in required — if the
 // Workload API reports "no identity issued" (a PermissionDenied status)
 // before it can hand back a connection. This is a real,
@@ -226,7 +232,13 @@ func AdminClient(conn *grpc.ClientConn) adminv1.AdminServiceClient {
 	return adminv1.NewAdminServiceClient(conn)
 }
 
-// GitOpsClient returns a GitOpsService client bound to conn.
+// GitOpsClient returns a GitOpsService client bound to conn. conn may come
+// from either DialAdmin (bearer-token auth, full access) or DialWorkload
+// (SPIFFE mTLS, the caller's own identity) — signet's server accepts both
+// for SyncBundle, PatchServiceConfig, and GetSOPSPublicKey, letting a
+// workload self-service its own bundle/config writes and fetch the active
+// SOPS public key without ever holding an admin token (bytepunx/signet#23,
+// #38, #78). See examples/gitops-workload for a runnable demonstration.
 func GitOpsClient(conn *grpc.ClientConn) adminv1.GitOpsServiceClient {
 	return adminv1.NewGitOpsServiceClient(conn)
 }

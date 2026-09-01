@@ -65,6 +65,10 @@ name = "getsecret"
 required-features = ["spiffe-workload"]
 
 [[example]]
+name = "gitops_workload"
+required-features = ["spiffe-workload"]
+
+[[example]]
 name = "restart_on_change"
 required-features = ["spiffe-workload"]
 

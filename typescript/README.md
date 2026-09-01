@@ -85,7 +85,7 @@ import { encryptForSecret, dialAdmin } from "@bytepunx/signet-client";
 
 const admin = dialAdmin({ address: "localhost:8444", token });
 const { publicKey } = await new Promise((resolve, reject) =>
-  admin.getSOPSPublicKey({}, (err, resp) => (err ? reject(err) : resolve(resp))),
+  admin.getSopsPublicKey({}, (err, resp) => (err ? reject(err) : resolve(resp))),
 );
 
 const content = await encryptForSecret(publicKey, "s3cr3t-api-key");
@@ -174,6 +174,52 @@ malformed `trustDomain`, a genuine authorization problem once identity issuance 
 broken rather than merely delayed, ...) is returned to the caller immediately, unretried, so
 this never masks a real misconfiguration as a transient blip. See `retryUntilIdentityIssued`
 and `isNoIdentityIssuedErr` in `src/workload.ts`.
+
+#### GitOpsService/AdminService over the same workload identity (`workloadChannelCredentials`)
+
+signet's server accepts a workload's own SPIFFE identity — no admin bearer token needed — for
+`SyncBundle`, `PatchServiceConfig`, and `GetSOPSPublicKey`, letting a workload self-service its
+own bundle/config writes and fetch the active SOPS public key (bytepunx/signet#23, #38, #78).
+Cross-namespace/service writes still require an explicit `CreatePolicy` grant from an operator;
+every other `GitOpsService`/`AdminService` RPC remains reachable only via the bearer-token path
+above.
+
+`dialWorkload` builds its `ChannelCredentials` via `workloadChannelCredentials`, exported
+standalone so any other grpc-js client can be bound to the same workload identity:
+
+```ts
+import { workloadChannelCredentials, GitOpsServiceClient } from "@bytepunx/signet-client";
+
+const credentials = await workloadChannelCredentials({
+  address: "signet.internal:8443",
+  workloadSocket: "unix:///run/spire/sockets/agent.sock",
+  trustDomain: "example.org",
+});
+const gitops = new GitOpsServiceClient("signet.internal:8443", credentials);
+const resp = await new Promise((resolve, reject) =>
+  gitops.getSopsPublicKey({}, (err, r) => (err ? reject(err) : resolve(r))),
+);
+gitops.close();
+```
+
+`dialWorkloadGitOps` wraps that up with the same open/close ergonomics `dialWorkload` provides
+for `SecretsServiceClient`:
+
+```ts
+import { dialWorkloadGitOps } from "@bytepunx/signet-client";
+
+const { client, close } = await dialWorkloadGitOps({
+  address: "signet.internal:8443",
+  workloadSocket: "unix:///run/spire/sockets/agent.sock",
+  trustDomain: "example.org",
+});
+const resp = await new Promise((resolve, reject) =>
+  client.getSopsPublicKey({}, (err, r) => (err ? reject(err) : resolve(r))),
+);
+close();
+```
+
+See `examples/gitops-workload/` for a runnable, CLI-driven version of the above.
 
 #### The SPIFFE gap (please read before relying on this in production)
 
@@ -308,7 +354,10 @@ of Go's `context.Context`).
 
 See `examples/echo/` for a minimal end-to-end program (env-var configured, built as a
 Docker image) used by the [signet-smoke-test](https://github.com/bytepunx/signet-smoke-test)
-harness to verify this client against a real signet + SPIRE deployment.
+harness to verify this client against a real signet + SPIRE deployment, and
+`examples/gitops-workload/` for a minimal, CLI-flag-configured program demonstrating
+`dialWorkloadGitOps`/`workloadChannelCredentials` (see "GitOpsService/AdminService over the
+same workload identity" above).
 
 ## Testing
 
@@ -317,7 +366,7 @@ npm run build && npm test
 ```
 
 `npm test` runs `node --test dist/**/*.test.js` — Node's built-in test runner, against
-compiled output (kept as-is from the original scaffold). 52 test cases across three files,
+compiled output (kept as-is from the original scaffold). 63 test cases across three files,
 all driven against hand-written fakes implementing narrow `LockStream`/`WatchStream`
 interfaces (mirroring `go/restart_test.go`'s fake-based pattern) — no live network connection
 or signet instance is used anywhere:
@@ -343,11 +392,11 @@ or signet instance is used anywhere:
   plaintext) on loopback, leaves existing behavior unchanged when omitted, and is rejected
   when combined with `forceTLS` or `caPem`, at both the `adminTransportMode` and `dialAdmin`
   entry points.
-- **`src/workload.test.ts`** (18 cases) — `authorizeTrustDomainMember` (the
+- **`src/workload.test.ts`** (20 cases) — `authorizeTrustDomainMember` (the
   `tlsconfig.AuthorizeMemberOf` reimplementation) against hand-written fake certificates:
   accepts a matching trust domain, rejects a mismatched one, rejects a missing SPIFFE URI
   SAN, normalizes a `spiffe://` prefix, rejects malformed input up front; `derToPem`
-  round-trip coverage; and the identity-issuance retry coverage for
+  round-trip coverage; the identity-issuance retry coverage for
   bytepunx/signet-clients#33, porting every case in `go/client_test.go`'s retry suite:
   `isNoIdentityIssuedErr` classification (PERMISSION_DENIED in various shapes vs. other
   codes vs. non-RpcError values), `retryUntilIdentityIssued` succeeding immediately with no
@@ -355,7 +404,12 @@ or signet instance is used anywhere:
   `workloadDialMaxAttempts` (5) with the full 1s/2s/4s/8s schedule, and passing an unrelated
   error straight through unretried — all via a fake `sleep` injected in place of the default
   `setTimeout`-based one, so the full-schedule case runs in under a millisecond instead of
-  ~15s.
+  ~15s; and, for the GitOps-over-workload-mTLS credential exposure, `workloadChannelCredentials`
+  wrapping a synchronous Workload API connection failure with a clear, prefixed error (no
+  socket or SPIRE instance needed), plus a real (if minimal) self-signed certificate generated
+  via `@peculiar/x509` proving `credentialsFromSVID`'s output — exactly what
+  `workloadChannelCredentials` resolves to — constructs `GitOpsServiceClient`,
+  `AdminServiceClient`, and `SecretsServiceClient` without connecting.
 
 The two timing-sensitive tests that must observe real elapsed time (the default heartbeat
 interval, and one coalescing test) use real timers and take ~200ms–1.3s each; every

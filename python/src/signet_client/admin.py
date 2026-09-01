@@ -106,7 +106,17 @@ def admin_client(channel: grpc.Channel) -> admin_pb2_grpc.AdminServiceStub:
 
 
 def gitops_client(channel: grpc.Channel) -> admin_pb2_grpc.GitOpsServiceStub:
-    """Returns a GitOpsService client bound to ``channel``."""
+    """Returns a GitOpsService client bound to ``channel``.
+
+    ``channel`` may come from either :func:`dial_admin` (bearer-token auth,
+    full access) or :func:`~signet_client.workload.dial_workload` (SPIFFE
+    mTLS, the caller's own identity) — signet's server accepts both for
+    ``SyncBundle``, ``PatchServiceConfig``, and ``GetSOPSPublicKey``,
+    letting a workload self-service its own bundle/config writes and fetch
+    the active SOPS public key without ever holding an admin token
+    (bytepunx/signet#23, #38, #78). See
+    ``examples/gitops_workload`` for a runnable demonstration.
+    """
     return admin_pb2_grpc.GitOpsServiceStub(channel)
 
 

@@ -55,6 +55,12 @@ def dial_workload(
             channel.close()
             source.close()
 
+    ``channel`` is also usable with :func:`~signet_client.admin.gitops_client`
+    for the subset of GitOpsService reachable this way (``SyncBundle``,
+    ``PatchServiceConfig``, ``GetSOPSPublicKey``) without needing an admin
+    bearer token at all. See ``gitops_client``'s docstring and
+    ``examples/gitops_workload``.
+
     Authorization note: the returned channel only trusts certificate chains
     that validate against ``trust_domain``'s own X.509 CA bundle (fetched
     from the Workload API), which is the primary SPIFFE mTLS authorization

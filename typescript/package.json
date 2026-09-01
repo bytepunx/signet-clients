@@ -21,7 +21,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p examples/echo/tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsc -p examples/echo/tsconfig.json && tsc -p examples/gitops-workload/tsconfig.json",
     "test": "node --test dist/**/*.test.js"
   },
   "dependencies": {
@@ -32,6 +32,8 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "@peculiar/webcrypto": "^1.7.0",
+    "@peculiar/x509": "^1.14.0"
   }
 }

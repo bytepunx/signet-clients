@@ -23,6 +23,19 @@ import { AdminServiceClient, GitOpsServiceClient } from "./gen/admin/v1/admin.js
 import { SecretsServiceClient } from "./gen/signet/v1/secrets.js";
 import { errMessage } from "./errors.js";
 
+/**
+ * GitOpsServiceClient/AdminServiceClient accept ChannelCredentials from
+ * either source in this package: gitOpsClient/dialAdmin below (bearer-token
+ * auth, full access) or workload.ts's workloadChannelCredentials/
+ * dialWorkloadGitOps (SPIFFE mTLS, the caller's own workload identity) —
+ * signet's server accepts both for SyncBundle, PatchServiceConfig, and
+ * GetSOPSPublicKey, letting a workload self-service its own bundle/config
+ * writes and fetch the active SOPS public key without ever holding an admin
+ * token (bytepunx/signet#23, #38, #78). Cross-namespace/service writes still
+ * require an explicit CreatePolicy grant from an operator. Every other
+ * GitOpsService/AdminService RPC remains reachable only via the bearer-token
+ * path here. See examples/gitops-workload for a runnable demonstration.
+ */
 export { SecretsServiceClient, AdminServiceClient, GitOpsServiceClient };
 
 /**
