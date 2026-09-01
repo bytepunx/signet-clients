@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  # Manual recovery path: if a release PR ever gets stuck stale (e.g. because
+  # commits landed without Conventional Commits-formatted messages, so
+  # release-please didn't recognize them as release-worthy and never
+  # refreshed the PR), this lets a maintainer force a fresh recomputation
+  # against the current state of main without needing a new push.
+  workflow_dispatch: {}
 
 permissions:
   contents: write
