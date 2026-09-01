@@ -1,0 +1,377 @@
+name: Proto version bump check
+
+# Automates the deliberate-bump workflow bytepunx/signet-clients#64 replaced
+# floating buf.gen.yaml references with: on a schedule, check whether
+# signet-proto has a newer tagged release than what each language client is
+# currently pinned to, and if so, bump the pin, regenerate, build, and run
+# that language's full test suite. A PR is only opened if all of that
+# succeeds — a failing bump fails the job and stops before ever opening a
+# PR, so nothing broken is ever proposed for merge. This keeps every commit
+# in this repo building against a fixed, specific, intentionally-adopted
+# signet-proto release (never a moving target), while still tracking new
+# releases close to automatically instead of waiting for someone to notice.
+
+on:
+  schedule:
+    # Daily, off-peak. Bumps are cheap to skip (no-op when already current),
+    # so a short interval costs little and keeps the lag between a new
+    # signet-proto release and a bump PR small.
+    - cron: "17 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  latest-release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.latest.outputs.version }}
+    steps:
+      - name: Determine latest signet-proto release
+        id: latest
+        run: |
+          version=$(gh api repos/bytepunx/signet-proto/releases/latest --jq .tag_name)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  go:
+    needs: latest-release
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare against currently pinned version
+        id: pinned
+        run: |
+          current=$(grep -oE 'signet-proto:v[0-9]+\.[0-9]+\.[0-9]+' buf.gen.yaml | head -1 | cut -d: -f2)
+          echo "version=$current" >> "$GITHUB_OUTPUT"
+          if [ "$current" = "${{ needs.latest-release.outputs.version }}" ]; then
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump pin
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: |
+          sed -i "s/signet-proto:${{ steps.pinned.outputs.version }}/signet-proto:${{ needs.latest-release.outputs.version }}/" buf.gen.yaml
+
+      - name: Set up Go
+        if: steps.pinned.outputs.up_to_date == 'false'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache: true
+
+      - name: Set up buf
+        if: steps.pinned.outputs.up_to_date == 'false'
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: Regenerate proto stubs
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: buf generate
+
+      - name: go vet
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: go vet ./...
+
+      - name: go test
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: go test -race -count=1 ./...
+
+      - name: Open PR
+        if: steps.pinned.outputs.up_to_date == 'false'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          commit-message: "chore(go): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          branch: proto-bump/go
+          delete-branch: true
+          title: "chore(go): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          body: |
+            Automated bump of the pinned signet-proto release for the Go client, from
+            `${{ steps.pinned.outputs.version }}` to `${{ needs.latest-release.outputs.version }}`
+            (bytepunx/signet-clients#64).
+
+            `buf generate`, `go vet`, and the full test suite all passed against the new
+            pin before this PR was opened — see this workflow run for the log.
+
+  python:
+    needs: latest-release
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare against currently pinned version
+        id: pinned
+        run: |
+          current=$(grep -oE 'signet-proto:v[0-9]+\.[0-9]+\.[0-9]+' buf.gen.yaml | head -1 | cut -d: -f2)
+          echo "version=$current" >> "$GITHUB_OUTPUT"
+          if [ "$current" = "${{ needs.latest-release.outputs.version }}" ]; then
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump pin
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: |
+          sed -i "s/signet-proto:${{ steps.pinned.outputs.version }}/signet-proto:${{ needs.latest-release.outputs.version }}/" buf.gen.yaml
+
+      - name: Set up Python
+        if: steps.pinned.outputs.up_to_date == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Set up buf
+        if: steps.pinned.outputs.up_to_date == 'false'
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: buf generate
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: buf generate
+
+      - name: Install package (dev + workload extras)
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: pip install -e ".[dev,workload]"
+
+      - name: pytest
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: pytest
+
+      - name: Open PR
+        if: steps.pinned.outputs.up_to_date == 'false'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          commit-message: "chore(python): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          branch: proto-bump/python
+          delete-branch: true
+          title: "chore(python): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          body: |
+            Automated bump of the pinned signet-proto release for the Python client, from
+            `${{ steps.pinned.outputs.version }}` to `${{ needs.latest-release.outputs.version }}`
+            (bytepunx/signet-clients#64).
+
+            `buf generate` and the full pytest suite passed against the new pin before
+            this PR was opened — see this workflow run for the log.
+
+  rust:
+    needs: latest-release
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare against currently pinned version
+        id: pinned
+        run: |
+          current=$(grep -oE 'signet-proto:v[0-9]+\.[0-9]+\.[0-9]+' buf.gen.yaml | head -1 | cut -d: -f2)
+          echo "version=$current" >> "$GITHUB_OUTPUT"
+          if [ "$current" = "${{ needs.latest-release.outputs.version }}" ]; then
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump pin
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: |
+          sed -i "s/signet-proto:${{ steps.pinned.outputs.version }}/signet-proto:${{ needs.latest-release.outputs.version }}/" buf.gen.yaml
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.pinned.outputs.up_to_date == 'false'
+
+      - name: Set up buf
+        if: steps.pinned.outputs.up_to_date == 'false'
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: buf generate
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: buf generate
+
+      - name: cargo build
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: cargo build --all-features
+
+      - name: cargo test
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: cargo test --all-features
+
+      - name: Open PR
+        if: steps.pinned.outputs.up_to_date == 'false'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          commit-message: "chore(rust): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          branch: proto-bump/rust
+          delete-branch: true
+          title: "chore(rust): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          body: |
+            Automated bump of the pinned signet-proto release for the Rust client, from
+            `${{ steps.pinned.outputs.version }}` to `${{ needs.latest-release.outputs.version }}`
+            (bytepunx/signet-clients#64).
+
+            `buf generate`, `cargo build --all-features`, and `cargo test --all-features`
+            all passed against the new pin before this PR was opened — see this workflow
+            run for the log.
+
+  csharp:
+    needs: latest-release
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: csharp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare against currently pinned version
+        id: pinned
+        run: |
+          current=$(grep -oE 'signet-proto:v[0-9]+\.[0-9]+\.[0-9]+' buf.gen.yaml | head -1 | cut -d: -f2)
+          echo "version=$current" >> "$GITHUB_OUTPUT"
+          if [ "$current" = "${{ needs.latest-release.outputs.version }}" ]; then
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump pin
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: |
+          sed -i "s/signet-proto:${{ steps.pinned.outputs.version }}/signet-proto:${{ needs.latest-release.outputs.version }}/" buf.gen.yaml
+
+      - name: Set up .NET
+        if: steps.pinned.outputs.up_to_date == 'false'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Set up buf
+        if: steps.pinned.outputs.up_to_date == 'false'
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: buf generate
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: buf generate
+
+      - name: dotnet build
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: dotnet build
+
+      - name: dotnet test
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: dotnet test
+
+      - name: Open PR
+        if: steps.pinned.outputs.up_to_date == 'false'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          commit-message: "chore(csharp): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          branch: proto-bump/csharp
+          delete-branch: true
+          title: "chore(csharp): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          body: |
+            Automated bump of the pinned signet-proto release for the C# client, from
+            `${{ steps.pinned.outputs.version }}` to `${{ needs.latest-release.outputs.version }}`
+            (bytepunx/signet-clients#64).
+
+            `buf generate`, `dotnet build`, and `dotnet test` all passed against the new
+            pin before this PR was opened — see this workflow run for the log.
+
+  typescript:
+    needs: latest-release
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare against currently pinned version
+        id: pinned
+        run: |
+          current=$(grep -oE 'signet-proto:v[0-9]+\.[0-9]+\.[0-9]+' buf.gen.yaml | head -1 | cut -d: -f2)
+          echo "version=$current" >> "$GITHUB_OUTPUT"
+          if [ "$current" = "${{ needs.latest-release.outputs.version }}" ]; then
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump pin
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: |
+          sed -i "s/signet-proto:${{ steps.pinned.outputs.version }}/signet-proto:${{ needs.latest-release.outputs.version }}/" buf.gen.yaml
+
+      - name: Set up Node
+        if: steps.pinned.outputs.up_to_date == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+
+      - name: Set up buf
+        if: steps.pinned.outputs.up_to_date == 'false'
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: buf generate
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: buf generate
+
+      - name: npm ci
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: npm ci
+
+      - name: Build
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: npm run build
+
+      - name: Test
+        if: steps.pinned.outputs.up_to_date == 'false'
+        run: npm test
+
+      - name: Open PR
+        if: steps.pinned.outputs.up_to_date == 'false'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          commit-message: "chore(typescript): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          branch: proto-bump/typescript
+          delete-branch: true
+          title: "chore(typescript): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          body: |
+            Automated bump of the pinned signet-proto release for the TypeScript client,
+            from `${{ steps.pinned.outputs.version }}` to
+            `${{ needs.latest-release.outputs.version }}` (bytepunx/signet-clients#64).
+
+            `buf generate`, the build, and the full test suite all passed against the new
+            pin before this PR was opened — see this workflow run for the log.
+
+            Note: `src/gen` is committed for this client, so this diff includes the
+            regenerated output directly.
