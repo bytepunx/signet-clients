@@ -34,6 +34,18 @@ public sealed class WorkloadConnection : IAsyncDisposable
     /// <summary>A SecretsService client bound to this connection.</summary>
     public Signet.V1.SecretsService.SecretsServiceClient SecretsClient => new(_channel);
 
+    /// <summary>
+    /// A GitOpsService client bound to this connection, authenticated by this workload's own
+    /// SPIFFE identity rather than an admin bearer token. signet's server accepts this for
+    /// <c>SyncBundle</c>, <c>PatchServiceConfig</c>, and <c>GetSOPSPublicKey</c>, letting a
+    /// workload self-service its own bundle/config writes and fetch the active SOPS public key
+    /// without ever holding an admin token (bytepunx/signet#23, #38, #78). Cross-namespace/
+    /// service writes still require an explicit <c>CreatePolicy</c> grant from an operator.
+    /// Every other <c>GitOpsService</c>/<c>AdminService</c> RPC remains unreachable this way —
+    /// use <see cref="AdminConnection"/> for those.
+    /// </summary>
+    public Admin.V1.GitOpsService.GitOpsServiceClient GitOpsClient => new(_channel);
+
     public ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
