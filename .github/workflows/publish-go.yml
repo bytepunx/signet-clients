@@ -25,6 +25,7 @@ jobs:
         uses: bufbuild/buf-action@v1
         with:
           setup_only: true
+          token: ${{ secrets.BSR_AUTH_TOKEN }}
 
       - name: Regenerate proto stubs
         working-directory: go

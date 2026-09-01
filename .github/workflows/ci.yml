@@ -29,6 +29,7 @@ jobs:
         uses: bufbuild/buf-action@v1
         with:
           setup_only: true
+          token: ${{ secrets.BSR_AUTH_TOKEN }}
 
       - name: Regenerate proto stubs
         run: buf generate
@@ -66,6 +67,7 @@ jobs:
         uses: bufbuild/buf-action@v1
         with:
           setup_only: true
+          token: ${{ secrets.BSR_AUTH_TOKEN }}
 
       - name: buf generate
         run: buf generate
@@ -96,6 +98,7 @@ jobs:
         uses: bufbuild/buf-action@v1
         with:
           setup_only: true
+          token: ${{ secrets.BSR_AUTH_TOKEN }}
 
       - name: buf generate
         run: buf generate
@@ -132,6 +135,7 @@ jobs:
         uses: bufbuild/buf-action@v1
         with:
           setup_only: true
+          token: ${{ secrets.BSR_AUTH_TOKEN }}
 
       - name: buf generate
         run: buf generate
@@ -160,6 +164,7 @@ jobs:
         uses: bufbuild/buf-action@v1
         with:
           setup_only: true
+          token: ${{ secrets.BSR_AUTH_TOKEN }}
 
       - name: buf generate
         run: buf generate
