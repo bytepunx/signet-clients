@@ -30,4 +30,4 @@ plugins:
 # is ready to adopt, and commit the regenerated src/gen in the same change.
 # bytepunx/signet-clients#67 automates checking for and proposing this bump.
 inputs:
-  - module: buf.build/bytepunx/signet-proto:v0.3.0
+  - module: buf.build/bytepunx/signet-proto:v0.4.0
