@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/bytepunx/signet-clients/compare/python-v0.4.0...python-v0.5.0) (2026-09-03)
+
+
+### Features
+
+* **python:** correct stale v0.3.0 pin comment after v0.4.0 bump ([1e596c6](https://github.com/bytepunx/signet-clients/commit/1e596c67112956f9703f2a188b742438c012d80c))
+
+
+### Bug Fixes
+
+* **ci:** make proto-bump releases actually trigger, stop committing build artifacts ([49be699](https://github.com/bytepunx/signet-clients/commit/49be699e2c6a3e665015968b9cb1a5b253fc3978))
+
 ## [0.4.0](https://github.com/bytepunx/signet-clients/compare/python-v0.3.0...python-v0.4.0) (2026-08-15)
 
 
