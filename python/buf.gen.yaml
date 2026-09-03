@@ -22,4 +22,4 @@ plugins:
 # including ones not yet released/tested. Bump deliberately when a newer
 # signet-proto release is ready to adopt.
 inputs:
-  - module: buf.build/bytepunx/signet-proto:v0.3.0
+  - module: buf.build/bytepunx/signet-proto:v0.4.0
