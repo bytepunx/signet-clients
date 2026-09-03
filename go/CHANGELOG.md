@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/bytepunx/signet-clients/compare/go/v0.6.0...go/v0.7.0) (2026-09-03)
+
+
+### Features
+
+* **go:** correct stale v0.3.0 pin comment after v0.4.0 bump ([8cd6911](https://github.com/bytepunx/signet-clients/commit/8cd69119d2632618530d8fbb1fbb9712f179fe51))
+
+
+### Bug Fixes
+
+* **ci:** make proto-bump releases actually trigger, stop committing build artifacts ([49be699](https://github.com/bytepunx/signet-clients/commit/49be699e2c6a3e665015968b9cb1a5b253fc3978))
+
 ## [0.6.0](https://github.com/bytepunx/signet-clients/compare/go/v0.5.0...go/v0.6.0) (2026-08-21)
 
 
