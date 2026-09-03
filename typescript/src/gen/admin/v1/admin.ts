@@ -482,6 +482,34 @@ export interface GetServiceConfigResponse {
   version: number;
 }
 
+export interface PutServiceConfigRequest {
+  namespace: string;
+  service: string;
+  /**
+   * content replaces the entire config document -- unlike
+   * PatchServiceConfigRequest.operations, this is not a diff.
+   */
+  content:
+    | any
+    | undefined;
+  /**
+   * expected_version guards this write with optimistic concurrency:
+   *   0        -- create-only; fails ALREADY_EXISTS if a document already exists.
+   *   non-zero -- replace-only-if-currently-at-exactly-this-version; fails
+   *               ABORTED if the document has changed since the caller last
+   *               read it (matches GetServiceConfigResponse.version /
+   *               PatchServiceConfigResponse.version). There is no way to
+   *               request an unconditional overwrite; every caller must
+   *               state what they expect the current state to be.
+   */
+  expectedVersion: number;
+}
+
+export interface PutServiceConfigResponse {
+  /** version is the config document's version after this write. */
+  version: number;
+}
+
 function createBaseUnsealKeyRequest(): UnsealKeyRequest {
   return { key: new Uint8Array(0) };
 }
@@ -5460,6 +5488,194 @@ export const GetServiceConfigResponse: MessageFns<GetServiceConfigResponse> = {
   },
 };
 
+function createBasePutServiceConfigRequest(): PutServiceConfigRequest {
+  return { namespace: "", service: "", content: undefined, expectedVersion: 0 };
+}
+
+export const PutServiceConfigRequest: MessageFns<PutServiceConfigRequest> = {
+  encode(message: PutServiceConfigRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.namespace !== "") {
+      writer.uint32(10).string(message.namespace);
+    }
+    if (message.service !== "") {
+      writer.uint32(18).string(message.service);
+    }
+    if (message.content !== undefined) {
+      Value.encode(Value.wrap(message.content), writer.uint32(26).fork()).join();
+    }
+    if (message.expectedVersion !== 0) {
+      writer.uint32(32).int32(message.expectedVersion);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PutServiceConfigRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBasePutServiceConfigRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.namespace = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.service = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.content = Value.unwrap(Value.decode(reader, reader.uint32()));
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.expectedVersion = reader.int32();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): PutServiceConfigRequest {
+    return {
+      namespace: isSet(object.namespace) ? globalThis.String(object.namespace) : "",
+      service: isSet(object.service) ? globalThis.String(object.service) : "",
+      content: isSet(object?.content) ? object.content : undefined,
+      expectedVersion: isSet(object.expectedVersion)
+        ? globalThis.Number(object.expectedVersion)
+        : isSet(object.expected_version)
+        ? globalThis.Number(object.expected_version)
+        : 0,
+    };
+  },
+
+  toJSON(message: PutServiceConfigRequest): unknown {
+    const obj: any = {};
+    if (message.namespace !== "") {
+      obj.namespace = message.namespace;
+    }
+    if (message.service !== "") {
+      obj.service = message.service;
+    }
+    if (message.content !== undefined) {
+      obj.content = message.content;
+    }
+    if (message.expectedVersion !== 0) {
+      obj.expectedVersion = Math.round(message.expectedVersion);
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<PutServiceConfigRequest>): PutServiceConfigRequest {
+    return PutServiceConfigRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<PutServiceConfigRequest>): PutServiceConfigRequest {
+    const message = createBasePutServiceConfigRequest();
+    message.namespace = object.namespace ?? "";
+    message.service = object.service ?? "";
+    message.content = object.content ?? undefined;
+    message.expectedVersion = object.expectedVersion ?? 0;
+    return message;
+  },
+};
+
+function createBasePutServiceConfigResponse(): PutServiceConfigResponse {
+  return { version: 0 };
+}
+
+export const PutServiceConfigResponse: MessageFns<PutServiceConfigResponse> = {
+  encode(message: PutServiceConfigResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.version !== 0) {
+      writer.uint32(8).int32(message.version);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PutServiceConfigResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBasePutServiceConfigResponse();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.version = reader.int32();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  fromJSON(object: any): PutServiceConfigResponse {
+    return { version: isSet(object.version) ? globalThis.Number(object.version) : 0 };
+  },
+
+  toJSON(message: PutServiceConfigResponse): unknown {
+    const obj: any = {};
+    if (message.version !== 0) {
+      obj.version = Math.round(message.version);
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<PutServiceConfigResponse>): PutServiceConfigResponse {
+    return PutServiceConfigResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<PutServiceConfigResponse>): PutServiceConfigResponse {
+    const message = createBasePutServiceConfigResponse();
+    message.version = object.version ?? 0;
+    return message;
+  },
+};
+
 /** AdminService handles operator lifecycle operations: unsealing, sealing, and status. */
 export type AdminServiceService = typeof AdminServiceService;
 export const AdminServiceService = {
@@ -6033,6 +6249,37 @@ export const GitOpsServiceService = {
       Buffer.from(GetServiceConfigResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer): GetServiceConfigResponse => GetServiceConfigResponse.decode(value),
   },
+  /**
+   * PutServiceConfig creates or fully replaces a service's plain config
+   * document -- the git-free write PatchServiceConfig deliberately doesn't
+   * offer, since PatchServiceConfig only mutates an existing document.
+   * expected_version makes this optimistic-concurrency-guarded rather than
+   * a blind overwrite, deliberately with no unconditional-overwrite escape
+   * hatch: 0 means create-only (fails ALREADY_EXISTS if a document is
+   * already there), and any other value means replace-only-if-currently-at-
+   * exactly-that-version (fails ABORTED -- the same conflict code
+   * PatchServiceConfig already uses -- if the document changed since the
+   * caller last read it). Two intended callers: an admin UI's edit/save
+   * flow (GetServiceConfig to load content+version, then PutServiceConfig
+   * with that version as the precondition), and a Helm post-install/upgrade
+   * hook bootstrapping a workload's own initial config with
+   * expected_version=0, idempotently no-op-ing on re-runs instead of
+   * stomping config an operator has since changed. Composes for free with
+   * the existing git-sync 3-way merge (bytepunx/signet#45): this RPC never
+   * touches the synced_content baseline, only content/version, exactly like
+   * PatchServiceConfig already doesn't.
+   */
+  putServiceConfig: {
+    path: "/admin.v1.GitOpsService/PutServiceConfig" as const,
+    requestStream: false as const,
+    responseStream: false as const,
+    requestSerialize: (value: PutServiceConfigRequest): Buffer =>
+      Buffer.from(PutServiceConfigRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer): PutServiceConfigRequest => PutServiceConfigRequest.decode(value),
+    responseSerialize: (value: PutServiceConfigResponse): Buffer =>
+      Buffer.from(PutServiceConfigResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer): PutServiceConfigResponse => PutServiceConfigResponse.decode(value),
+  },
 } as const;
 
 export interface GitOpsServiceServer extends UntypedServiceImplementation {
@@ -6085,6 +6332,27 @@ export interface GitOpsServiceServer extends UntypedServiceImplementation {
    * namespace/service.
    */
   getServiceConfig: handleUnaryCall<GetServiceConfigRequest, GetServiceConfigResponse>;
+  /**
+   * PutServiceConfig creates or fully replaces a service's plain config
+   * document -- the git-free write PatchServiceConfig deliberately doesn't
+   * offer, since PatchServiceConfig only mutates an existing document.
+   * expected_version makes this optimistic-concurrency-guarded rather than
+   * a blind overwrite, deliberately with no unconditional-overwrite escape
+   * hatch: 0 means create-only (fails ALREADY_EXISTS if a document is
+   * already there), and any other value means replace-only-if-currently-at-
+   * exactly-that-version (fails ABORTED -- the same conflict code
+   * PatchServiceConfig already uses -- if the document changed since the
+   * caller last read it). Two intended callers: an admin UI's edit/save
+   * flow (GetServiceConfig to load content+version, then PutServiceConfig
+   * with that version as the precondition), and a Helm post-install/upgrade
+   * hook bootstrapping a workload's own initial config with
+   * expected_version=0, idempotently no-op-ing on re-runs instead of
+   * stomping config an operator has since changed. Composes for free with
+   * the existing git-sync 3-way merge (bytepunx/signet#45): this RPC never
+   * touches the synced_content baseline, only content/version, exactly like
+   * PatchServiceConfig already doesn't.
+   */
+  putServiceConfig: handleUnaryCall<PutServiceConfigRequest, PutServiceConfigResponse>;
 }
 
 export interface GitOpsServiceClient extends Client {
@@ -6291,6 +6559,41 @@ export interface GitOpsServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: GetServiceConfigResponse) => void,
+  ): ClientUnaryCall;
+  /**
+   * PutServiceConfig creates or fully replaces a service's plain config
+   * document -- the git-free write PatchServiceConfig deliberately doesn't
+   * offer, since PatchServiceConfig only mutates an existing document.
+   * expected_version makes this optimistic-concurrency-guarded rather than
+   * a blind overwrite, deliberately with no unconditional-overwrite escape
+   * hatch: 0 means create-only (fails ALREADY_EXISTS if a document is
+   * already there), and any other value means replace-only-if-currently-at-
+   * exactly-that-version (fails ABORTED -- the same conflict code
+   * PatchServiceConfig already uses -- if the document changed since the
+   * caller last read it). Two intended callers: an admin UI's edit/save
+   * flow (GetServiceConfig to load content+version, then PutServiceConfig
+   * with that version as the precondition), and a Helm post-install/upgrade
+   * hook bootstrapping a workload's own initial config with
+   * expected_version=0, idempotently no-op-ing on re-runs instead of
+   * stomping config an operator has since changed. Composes for free with
+   * the existing git-sync 3-way merge (bytepunx/signet#45): this RPC never
+   * touches the synced_content baseline, only content/version, exactly like
+   * PatchServiceConfig already doesn't.
+   */
+  putServiceConfig(
+    request: PutServiceConfigRequest,
+    callback: (error: ServiceError | null, response: PutServiceConfigResponse) => void,
+  ): ClientUnaryCall;
+  putServiceConfig(
+    request: PutServiceConfigRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: PutServiceConfigResponse) => void,
+  ): ClientUnaryCall;
+  putServiceConfig(
+    request: PutServiceConfigRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: PutServiceConfigResponse) => void,
   ): ClientUnaryCall;
 }
 
