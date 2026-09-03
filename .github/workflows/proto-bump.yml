@@ -93,10 +93,13 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          commit-message: "chore(go): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          add-paths: |
+            go/buf.gen.yaml
+            go/gen
+          commit-message: "feat(go): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
           branch: proto-bump/go
           delete-branch: true
-          title: "chore(go): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          title: "feat(go): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
           body: |
             Automated bump of the pinned signet-proto release for the Go client, from
             `${{ steps.pinned.outputs.version }}` to `${{ needs.latest-release.outputs.version }}`
@@ -161,10 +164,12 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          commit-message: "chore(python): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          add-paths: |
+            python/buf.gen.yaml
+          commit-message: "feat(python): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
           branch: proto-bump/python
           delete-branch: true
-          title: "chore(python): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          title: "feat(python): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
           body: |
             Automated bump of the pinned signet-proto release for the Python client, from
             `${{ steps.pinned.outputs.version }}` to `${{ needs.latest-release.outputs.version }}`
@@ -225,10 +230,12 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          commit-message: "chore(rust): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          add-paths: |
+            rust/buf.gen.yaml
+          commit-message: "feat(rust): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
           branch: proto-bump/rust
           delete-branch: true
-          title: "chore(rust): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          title: "feat(rust): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
           body: |
             Automated bump of the pinned signet-proto release for the Rust client, from
             `${{ steps.pinned.outputs.version }}` to `${{ needs.latest-release.outputs.version }}`
@@ -293,10 +300,12 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          commit-message: "chore(csharp): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          add-paths: |
+            csharp/buf.gen.yaml
+          commit-message: "feat(csharp): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
           branch: proto-bump/csharp
           delete-branch: true
-          title: "chore(csharp): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          title: "feat(csharp): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
           body: |
             Automated bump of the pinned signet-proto release for the C# client, from
             `${{ steps.pinned.outputs.version }}` to `${{ needs.latest-release.outputs.version }}`
@@ -366,10 +375,13 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          commit-message: "chore(typescript): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          add-paths: |
+            typescript/buf.gen.yaml
+            typescript/src/gen
+          commit-message: "feat(typescript): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
           branch: proto-bump/typescript
           delete-branch: true
-          title: "chore(typescript): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
+          title: "feat(typescript): bump signet-proto pin to ${{ needs.latest-release.outputs.version }}"
           body: |
             Automated bump of the pinned signet-proto release for the TypeScript client,
             from `${{ steps.pinned.outputs.version }}` to
