@@ -3079,6 +3079,130 @@ func (x *GetServiceConfigResponse) GetVersion() int32 {
 	return 0
 }
 
+type PutServiceConfigRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Namespace string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Service   string                 `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
+	// content replaces the entire config document -- unlike
+	// PatchServiceConfigRequest.operations, this is not a diff.
+	Content *structpb.Value `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	// expected_version guards this write with optimistic concurrency:
+	//
+	//	0        -- create-only; fails ALREADY_EXISTS if a document already exists.
+	//	non-zero -- replace-only-if-currently-at-exactly-this-version; fails
+	//	            ABORTED if the document has changed since the caller last
+	//	            read it (matches GetServiceConfigResponse.version /
+	//	            PatchServiceConfigResponse.version). There is no way to
+	//	            request an unconditional overwrite; every caller must
+	//	            state what they expect the current state to be.
+	ExpectedVersion int32 `protobuf:"varint,4,opt,name=expected_version,json=expectedVersion,proto3" json:"expected_version,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *PutServiceConfigRequest) Reset() {
+	*x = PutServiceConfigRequest{}
+	mi := &file_admin_v1_admin_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PutServiceConfigRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PutServiceConfigRequest) ProtoMessage() {}
+
+func (x *PutServiceConfigRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_admin_v1_admin_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PutServiceConfigRequest.ProtoReflect.Descriptor instead.
+func (*PutServiceConfigRequest) Descriptor() ([]byte, []int) {
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{54}
+}
+
+func (x *PutServiceConfigRequest) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *PutServiceConfigRequest) GetService() string {
+	if x != nil {
+		return x.Service
+	}
+	return ""
+}
+
+func (x *PutServiceConfigRequest) GetContent() *structpb.Value {
+	if x != nil {
+		return x.Content
+	}
+	return nil
+}
+
+func (x *PutServiceConfigRequest) GetExpectedVersion() int32 {
+	if x != nil {
+		return x.ExpectedVersion
+	}
+	return 0
+}
+
+type PutServiceConfigResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// version is the config document's version after this write.
+	Version       int32 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PutServiceConfigResponse) Reset() {
+	*x = PutServiceConfigResponse{}
+	mi := &file_admin_v1_admin_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PutServiceConfigResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PutServiceConfigResponse) ProtoMessage() {}
+
+func (x *PutServiceConfigResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_admin_v1_admin_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PutServiceConfigResponse.ProtoReflect.Descriptor instead.
+func (*PutServiceConfigResponse) Descriptor() ([]byte, []int) {
+	return file_admin_v1_admin_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *PutServiceConfigResponse) GetVersion() int32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
 var File_admin_v1_admin_proto protoreflect.FileDescriptor
 
 const file_admin_v1_admin_proto_rawDesc = "" +
@@ -3282,7 +3406,14 @@ const file_admin_v1_admin_proto_rawDesc = "" +
 	"\aservice\x18\x02 \x01(\tR\aservice\"f\n" +
 	"\x18GetServiceConfigResponse\x120\n" +
 	"\acontent\x18\x01 \x01(\v2\x16.google.protobuf.ValueR\acontent\x12\x18\n" +
-	"\aversion\x18\x02 \x01(\x05R\aversion2\xc3\a\n" +
+	"\aversion\x18\x02 \x01(\x05R\aversion\"\xae\x01\n" +
+	"\x17PutServiceConfigRequest\x12\x1c\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
+	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
+	"\acontent\x18\x03 \x01(\v2\x16.google.protobuf.ValueR\acontent\x12)\n" +
+	"\x10expected_version\x18\x04 \x01(\x05R\x0fexpectedVersion\"4\n" +
+	"\x18PutServiceConfigResponse\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\x05R\aversion2\xc3\a\n" +
 	"\fAdminService\x12D\n" +
 	"\tUnsealKey\x12\x1a.admin.v1.UnsealKeyRequest\x1a\x1b.admin.v1.UnsealKeyResponse\x12J\n" +
 	"\vUnsealShare\x12\x1c.admin.v1.UnsealShareRequest\x1a\x1d.admin.v1.UnsealShareResponse\x125\n" +
@@ -3296,7 +3427,7 @@ const file_admin_v1_admin_proto_rawDesc = "" +
 	"\fListPolicies\x12\x1d.admin.v1.ListPoliciesRequest\x1a\x1e.admin.v1.ListPoliciesResponse\x12M\n" +
 	"\fDeletePolicy\x12\x1d.admin.v1.DeletePolicyRequest\x1a\x1e.admin.v1.DeletePolicyResponse\x12M\n" +
 	"\fDeleteSecret\x12\x1d.admin.v1.DeleteSecretRequest\x1a\x1e.admin.v1.DeleteSecretResponse\x12M\n" +
-	"\fDeleteConfig\x12\x1d.admin.v1.DeleteConfigRequest\x1a\x1e.admin.v1.DeleteConfigResponse2\xc2\a\n" +
+	"\fDeleteConfig\x12\x1d.admin.v1.DeleteConfigRequest\x1a\x1e.admin.v1.DeleteConfigResponse2\x9d\b\n" +
 	"\rGitOpsService\x12Y\n" +
 	"\x10GetSOPSPublicKey\x12!.admin.v1.GetSOPSPublicKeyRequest\x1a\".admin.v1.GetSOPSPublicKeyResponse\x12P\n" +
 	"\rRotateSOPSKey\x12\x1e.admin.v1.RotateSOPSKeyRequest\x1a\x1f.admin.v1.RotateSOPSKeyResponse\x12M\n" +
@@ -3309,7 +3440,8 @@ const file_admin_v1_admin_proto_rawDesc = "" +
 	"\n" +
 	"SyncBundle\x12\x19.admin.v1.SyncBundleChunk\x1a\x1c.admin.v1.SyncBundleResponse(\x01\x12_\n" +
 	"\x12PatchServiceConfig\x12#.admin.v1.PatchServiceConfigRequest\x1a$.admin.v1.PatchServiceConfigResponse\x12Y\n" +
-	"\x10GetServiceConfig\x12!.admin.v1.GetServiceConfigRequest\x1a\".admin.v1.GetServiceConfigResponseB<Z:github.com/bytepunx/signet-clients/go/gen/admin/v1;adminv1b\x06proto3"
+	"\x10GetServiceConfig\x12!.admin.v1.GetServiceConfigRequest\x1a\".admin.v1.GetServiceConfigResponse\x12Y\n" +
+	"\x10PutServiceConfig\x12!.admin.v1.PutServiceConfigRequest\x1a\".admin.v1.PutServiceConfigResponseB<Z:github.com/bytepunx/signet-clients/go/gen/admin/v1;adminv1b\x06proto3"
 
 var (
 	file_admin_v1_admin_proto_rawDescOnce sync.Once
@@ -3324,7 +3456,7 @@ func file_admin_v1_admin_proto_rawDescGZIP() []byte {
 }
 
 var file_admin_v1_admin_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_admin_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 54)
+var file_admin_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 56)
 var file_admin_v1_admin_proto_goTypes = []any{
 	(StatusResponse_State)(0),          // 0: admin.v1.StatusResponse.State
 	(*UnsealKeyRequest)(nil),           // 1: admin.v1.UnsealKeyRequest
@@ -3381,7 +3513,9 @@ var file_admin_v1_admin_proto_goTypes = []any{
 	(*PatchServiceConfigResponse)(nil), // 52: admin.v1.PatchServiceConfigResponse
 	(*GetServiceConfigRequest)(nil),    // 53: admin.v1.GetServiceConfigRequest
 	(*GetServiceConfigResponse)(nil),   // 54: admin.v1.GetServiceConfigResponse
-	(*structpb.Value)(nil),             // 55: google.protobuf.Value
+	(*PutServiceConfigRequest)(nil),    // 55: admin.v1.PutServiceConfigRequest
+	(*PutServiceConfigResponse)(nil),   // 56: admin.v1.PutServiceConfigResponse
+	(*structpb.Value)(nil),             // 57: google.protobuf.Value
 }
 var file_admin_v1_admin_proto_depIdxs = []int32{
 	0,  // 0: admin.v1.StatusResponse.state:type_name -> admin.v1.StatusResponse.State
@@ -3390,62 +3524,65 @@ var file_admin_v1_admin_proto_depIdxs = []int32{
 	34, // 3: admin.v1.ListSOPSKeysResponse.keys:type_name -> admin.v1.SOPSKeyInfo
 	41, // 4: admin.v1.ListRepositoriesResponse.repositories:type_name -> admin.v1.RepositoryInfo
 	48, // 5: admin.v1.SyncBundleChunk.header:type_name -> admin.v1.SyncBundleHeader
-	55, // 6: admin.v1.JsonPatchOperation.value:type_name -> google.protobuf.Value
+	57, // 6: admin.v1.JsonPatchOperation.value:type_name -> google.protobuf.Value
 	50, // 7: admin.v1.PatchServiceConfigRequest.operations:type_name -> admin.v1.JsonPatchOperation
-	55, // 8: admin.v1.GetServiceConfigResponse.content:type_name -> google.protobuf.Value
-	1,  // 9: admin.v1.AdminService.UnsealKey:input_type -> admin.v1.UnsealKeyRequest
-	3,  // 10: admin.v1.AdminService.UnsealShare:input_type -> admin.v1.UnsealShareRequest
-	5,  // 11: admin.v1.AdminService.Seal:input_type -> admin.v1.SealRequest
-	7,  // 12: admin.v1.AdminService.Status:input_type -> admin.v1.StatusRequest
-	9,  // 13: admin.v1.AdminService.RotateKEK:input_type -> admin.v1.RotateKEKRequest
-	11, // 14: admin.v1.AdminService.ListKEKs:input_type -> admin.v1.ListKEKsRequest
-	14, // 15: admin.v1.AdminService.PruneKEK:input_type -> admin.v1.PruneKEKRequest
-	16, // 16: admin.v1.AdminService.RotateMasterKey:input_type -> admin.v1.RotateMasterKeyRequest
-	18, // 17: admin.v1.AdminService.CreatePolicy:input_type -> admin.v1.CreatePolicyRequest
-	20, // 18: admin.v1.AdminService.ListPolicies:input_type -> admin.v1.ListPoliciesRequest
-	23, // 19: admin.v1.AdminService.DeletePolicy:input_type -> admin.v1.DeletePolicyRequest
-	25, // 20: admin.v1.AdminService.DeleteSecret:input_type -> admin.v1.DeleteSecretRequest
-	27, // 21: admin.v1.AdminService.DeleteConfig:input_type -> admin.v1.DeleteConfigRequest
-	29, // 22: admin.v1.GitOpsService.GetSOPSPublicKey:input_type -> admin.v1.GetSOPSPublicKeyRequest
-	31, // 23: admin.v1.GitOpsService.RotateSOPSKey:input_type -> admin.v1.RotateSOPSKeyRequest
-	33, // 24: admin.v1.GitOpsService.ListSOPSKeys:input_type -> admin.v1.ListSOPSKeysRequest
-	36, // 25: admin.v1.GitOpsService.PruneSOPSKey:input_type -> admin.v1.PruneSOPSKeyRequest
-	38, // 26: admin.v1.GitOpsService.RegisterRepository:input_type -> admin.v1.RegisterRepositoryRequest
-	40, // 27: admin.v1.GitOpsService.ListRepositories:input_type -> admin.v1.ListRepositoriesRequest
-	43, // 28: admin.v1.GitOpsService.RemoveRepository:input_type -> admin.v1.RemoveRepositoryRequest
-	45, // 29: admin.v1.GitOpsService.TriggerSync:input_type -> admin.v1.TriggerSyncRequest
-	47, // 30: admin.v1.GitOpsService.SyncBundle:input_type -> admin.v1.SyncBundleChunk
-	51, // 31: admin.v1.GitOpsService.PatchServiceConfig:input_type -> admin.v1.PatchServiceConfigRequest
-	53, // 32: admin.v1.GitOpsService.GetServiceConfig:input_type -> admin.v1.GetServiceConfigRequest
-	2,  // 33: admin.v1.AdminService.UnsealKey:output_type -> admin.v1.UnsealKeyResponse
-	4,  // 34: admin.v1.AdminService.UnsealShare:output_type -> admin.v1.UnsealShareResponse
-	6,  // 35: admin.v1.AdminService.Seal:output_type -> admin.v1.SealResponse
-	8,  // 36: admin.v1.AdminService.Status:output_type -> admin.v1.StatusResponse
-	10, // 37: admin.v1.AdminService.RotateKEK:output_type -> admin.v1.RotateKEKResponse
-	13, // 38: admin.v1.AdminService.ListKEKs:output_type -> admin.v1.ListKEKsResponse
-	15, // 39: admin.v1.AdminService.PruneKEK:output_type -> admin.v1.PruneKEKResponse
-	17, // 40: admin.v1.AdminService.RotateMasterKey:output_type -> admin.v1.RotateMasterKeyResponse
-	19, // 41: admin.v1.AdminService.CreatePolicy:output_type -> admin.v1.CreatePolicyResponse
-	22, // 42: admin.v1.AdminService.ListPolicies:output_type -> admin.v1.ListPoliciesResponse
-	24, // 43: admin.v1.AdminService.DeletePolicy:output_type -> admin.v1.DeletePolicyResponse
-	26, // 44: admin.v1.AdminService.DeleteSecret:output_type -> admin.v1.DeleteSecretResponse
-	28, // 45: admin.v1.AdminService.DeleteConfig:output_type -> admin.v1.DeleteConfigResponse
-	30, // 46: admin.v1.GitOpsService.GetSOPSPublicKey:output_type -> admin.v1.GetSOPSPublicKeyResponse
-	32, // 47: admin.v1.GitOpsService.RotateSOPSKey:output_type -> admin.v1.RotateSOPSKeyResponse
-	35, // 48: admin.v1.GitOpsService.ListSOPSKeys:output_type -> admin.v1.ListSOPSKeysResponse
-	37, // 49: admin.v1.GitOpsService.PruneSOPSKey:output_type -> admin.v1.PruneSOPSKeyResponse
-	39, // 50: admin.v1.GitOpsService.RegisterRepository:output_type -> admin.v1.RegisterRepositoryResponse
-	42, // 51: admin.v1.GitOpsService.ListRepositories:output_type -> admin.v1.ListRepositoriesResponse
-	44, // 52: admin.v1.GitOpsService.RemoveRepository:output_type -> admin.v1.RemoveRepositoryResponse
-	46, // 53: admin.v1.GitOpsService.TriggerSync:output_type -> admin.v1.TriggerSyncResponse
-	49, // 54: admin.v1.GitOpsService.SyncBundle:output_type -> admin.v1.SyncBundleResponse
-	52, // 55: admin.v1.GitOpsService.PatchServiceConfig:output_type -> admin.v1.PatchServiceConfigResponse
-	54, // 56: admin.v1.GitOpsService.GetServiceConfig:output_type -> admin.v1.GetServiceConfigResponse
-	33, // [33:57] is the sub-list for method output_type
-	9,  // [9:33] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	57, // 8: admin.v1.GetServiceConfigResponse.content:type_name -> google.protobuf.Value
+	57, // 9: admin.v1.PutServiceConfigRequest.content:type_name -> google.protobuf.Value
+	1,  // 10: admin.v1.AdminService.UnsealKey:input_type -> admin.v1.UnsealKeyRequest
+	3,  // 11: admin.v1.AdminService.UnsealShare:input_type -> admin.v1.UnsealShareRequest
+	5,  // 12: admin.v1.AdminService.Seal:input_type -> admin.v1.SealRequest
+	7,  // 13: admin.v1.AdminService.Status:input_type -> admin.v1.StatusRequest
+	9,  // 14: admin.v1.AdminService.RotateKEK:input_type -> admin.v1.RotateKEKRequest
+	11, // 15: admin.v1.AdminService.ListKEKs:input_type -> admin.v1.ListKEKsRequest
+	14, // 16: admin.v1.AdminService.PruneKEK:input_type -> admin.v1.PruneKEKRequest
+	16, // 17: admin.v1.AdminService.RotateMasterKey:input_type -> admin.v1.RotateMasterKeyRequest
+	18, // 18: admin.v1.AdminService.CreatePolicy:input_type -> admin.v1.CreatePolicyRequest
+	20, // 19: admin.v1.AdminService.ListPolicies:input_type -> admin.v1.ListPoliciesRequest
+	23, // 20: admin.v1.AdminService.DeletePolicy:input_type -> admin.v1.DeletePolicyRequest
+	25, // 21: admin.v1.AdminService.DeleteSecret:input_type -> admin.v1.DeleteSecretRequest
+	27, // 22: admin.v1.AdminService.DeleteConfig:input_type -> admin.v1.DeleteConfigRequest
+	29, // 23: admin.v1.GitOpsService.GetSOPSPublicKey:input_type -> admin.v1.GetSOPSPublicKeyRequest
+	31, // 24: admin.v1.GitOpsService.RotateSOPSKey:input_type -> admin.v1.RotateSOPSKeyRequest
+	33, // 25: admin.v1.GitOpsService.ListSOPSKeys:input_type -> admin.v1.ListSOPSKeysRequest
+	36, // 26: admin.v1.GitOpsService.PruneSOPSKey:input_type -> admin.v1.PruneSOPSKeyRequest
+	38, // 27: admin.v1.GitOpsService.RegisterRepository:input_type -> admin.v1.RegisterRepositoryRequest
+	40, // 28: admin.v1.GitOpsService.ListRepositories:input_type -> admin.v1.ListRepositoriesRequest
+	43, // 29: admin.v1.GitOpsService.RemoveRepository:input_type -> admin.v1.RemoveRepositoryRequest
+	45, // 30: admin.v1.GitOpsService.TriggerSync:input_type -> admin.v1.TriggerSyncRequest
+	47, // 31: admin.v1.GitOpsService.SyncBundle:input_type -> admin.v1.SyncBundleChunk
+	51, // 32: admin.v1.GitOpsService.PatchServiceConfig:input_type -> admin.v1.PatchServiceConfigRequest
+	53, // 33: admin.v1.GitOpsService.GetServiceConfig:input_type -> admin.v1.GetServiceConfigRequest
+	55, // 34: admin.v1.GitOpsService.PutServiceConfig:input_type -> admin.v1.PutServiceConfigRequest
+	2,  // 35: admin.v1.AdminService.UnsealKey:output_type -> admin.v1.UnsealKeyResponse
+	4,  // 36: admin.v1.AdminService.UnsealShare:output_type -> admin.v1.UnsealShareResponse
+	6,  // 37: admin.v1.AdminService.Seal:output_type -> admin.v1.SealResponse
+	8,  // 38: admin.v1.AdminService.Status:output_type -> admin.v1.StatusResponse
+	10, // 39: admin.v1.AdminService.RotateKEK:output_type -> admin.v1.RotateKEKResponse
+	13, // 40: admin.v1.AdminService.ListKEKs:output_type -> admin.v1.ListKEKsResponse
+	15, // 41: admin.v1.AdminService.PruneKEK:output_type -> admin.v1.PruneKEKResponse
+	17, // 42: admin.v1.AdminService.RotateMasterKey:output_type -> admin.v1.RotateMasterKeyResponse
+	19, // 43: admin.v1.AdminService.CreatePolicy:output_type -> admin.v1.CreatePolicyResponse
+	22, // 44: admin.v1.AdminService.ListPolicies:output_type -> admin.v1.ListPoliciesResponse
+	24, // 45: admin.v1.AdminService.DeletePolicy:output_type -> admin.v1.DeletePolicyResponse
+	26, // 46: admin.v1.AdminService.DeleteSecret:output_type -> admin.v1.DeleteSecretResponse
+	28, // 47: admin.v1.AdminService.DeleteConfig:output_type -> admin.v1.DeleteConfigResponse
+	30, // 48: admin.v1.GitOpsService.GetSOPSPublicKey:output_type -> admin.v1.GetSOPSPublicKeyResponse
+	32, // 49: admin.v1.GitOpsService.RotateSOPSKey:output_type -> admin.v1.RotateSOPSKeyResponse
+	35, // 50: admin.v1.GitOpsService.ListSOPSKeys:output_type -> admin.v1.ListSOPSKeysResponse
+	37, // 51: admin.v1.GitOpsService.PruneSOPSKey:output_type -> admin.v1.PruneSOPSKeyResponse
+	39, // 52: admin.v1.GitOpsService.RegisterRepository:output_type -> admin.v1.RegisterRepositoryResponse
+	42, // 53: admin.v1.GitOpsService.ListRepositories:output_type -> admin.v1.ListRepositoriesResponse
+	44, // 54: admin.v1.GitOpsService.RemoveRepository:output_type -> admin.v1.RemoveRepositoryResponse
+	46, // 55: admin.v1.GitOpsService.TriggerSync:output_type -> admin.v1.TriggerSyncResponse
+	49, // 56: admin.v1.GitOpsService.SyncBundle:output_type -> admin.v1.SyncBundleResponse
+	52, // 57: admin.v1.GitOpsService.PatchServiceConfig:output_type -> admin.v1.PatchServiceConfigResponse
+	54, // 58: admin.v1.GitOpsService.GetServiceConfig:output_type -> admin.v1.GetServiceConfigResponse
+	56, // 59: admin.v1.GitOpsService.PutServiceConfig:output_type -> admin.v1.PutServiceConfigResponse
+	35, // [35:60] is the sub-list for method output_type
+	10, // [10:35] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_admin_v1_admin_proto_init() }
@@ -3463,7 +3600,7 @@ func file_admin_v1_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_admin_v1_admin_proto_rawDesc), len(file_admin_v1_admin_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   54,
+			NumMessages:   56,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
