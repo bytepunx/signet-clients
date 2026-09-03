@@ -622,6 +622,7 @@ const (
 	GitOpsService_SyncBundle_FullMethodName         = "/admin.v1.GitOpsService/SyncBundle"
 	GitOpsService_PatchServiceConfig_FullMethodName = "/admin.v1.GitOpsService/PatchServiceConfig"
 	GitOpsService_GetServiceConfig_FullMethodName   = "/admin.v1.GitOpsService/GetServiceConfig"
+	GitOpsService_PutServiceConfig_FullMethodName   = "/admin.v1.GitOpsService/PutServiceConfig"
 )
 
 // GitOpsServiceClient is the client API for GitOpsService service.
@@ -673,6 +674,25 @@ type GitOpsServiceClient interface {
 	// removal. Fails NotFound if no config document exists yet for
 	// namespace/service.
 	GetServiceConfig(ctx context.Context, in *GetServiceConfigRequest, opts ...grpc.CallOption) (*GetServiceConfigResponse, error)
+	// PutServiceConfig creates or fully replaces a service's plain config
+	// document -- the git-free write PatchServiceConfig deliberately doesn't
+	// offer, since PatchServiceConfig only mutates an existing document.
+	// expected_version makes this optimistic-concurrency-guarded rather than
+	// a blind overwrite, deliberately with no unconditional-overwrite escape
+	// hatch: 0 means create-only (fails ALREADY_EXISTS if a document is
+	// already there), and any other value means replace-only-if-currently-at-
+	// exactly-that-version (fails ABORTED -- the same conflict code
+	// PatchServiceConfig already uses -- if the document changed since the
+	// caller last read it). Two intended callers: an admin UI's edit/save
+	// flow (GetServiceConfig to load content+version, then PutServiceConfig
+	// with that version as the precondition), and a Helm post-install/upgrade
+	// hook bootstrapping a workload's own initial config with
+	// expected_version=0, idempotently no-op-ing on re-runs instead of
+	// stomping config an operator has since changed. Composes for free with
+	// the existing git-sync 3-way merge (bytepunx/signet#45): this RPC never
+	// touches the synced_content baseline, only content/version, exactly like
+	// PatchServiceConfig already doesn't.
+	PutServiceConfig(ctx context.Context, in *PutServiceConfigRequest, opts ...grpc.CallOption) (*PutServiceConfigResponse, error)
 }
 
 type gitOpsServiceClient struct {
@@ -796,6 +816,16 @@ func (c *gitOpsServiceClient) GetServiceConfig(ctx context.Context, in *GetServi
 	return out, nil
 }
 
+func (c *gitOpsServiceClient) PutServiceConfig(ctx context.Context, in *PutServiceConfigRequest, opts ...grpc.CallOption) (*PutServiceConfigResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PutServiceConfigResponse)
+	err := c.cc.Invoke(ctx, GitOpsService_PutServiceConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GitOpsServiceServer is the server API for GitOpsService service.
 // All implementations must embed UnimplementedGitOpsServiceServer
 // for forward compatibility.
@@ -845,6 +875,25 @@ type GitOpsServiceServer interface {
 	// removal. Fails NotFound if no config document exists yet for
 	// namespace/service.
 	GetServiceConfig(context.Context, *GetServiceConfigRequest) (*GetServiceConfigResponse, error)
+	// PutServiceConfig creates or fully replaces a service's plain config
+	// document -- the git-free write PatchServiceConfig deliberately doesn't
+	// offer, since PatchServiceConfig only mutates an existing document.
+	// expected_version makes this optimistic-concurrency-guarded rather than
+	// a blind overwrite, deliberately with no unconditional-overwrite escape
+	// hatch: 0 means create-only (fails ALREADY_EXISTS if a document is
+	// already there), and any other value means replace-only-if-currently-at-
+	// exactly-that-version (fails ABORTED -- the same conflict code
+	// PatchServiceConfig already uses -- if the document changed since the
+	// caller last read it). Two intended callers: an admin UI's edit/save
+	// flow (GetServiceConfig to load content+version, then PutServiceConfig
+	// with that version as the precondition), and a Helm post-install/upgrade
+	// hook bootstrapping a workload's own initial config with
+	// expected_version=0, idempotently no-op-ing on re-runs instead of
+	// stomping config an operator has since changed. Composes for free with
+	// the existing git-sync 3-way merge (bytepunx/signet#45): this RPC never
+	// touches the synced_content baseline, only content/version, exactly like
+	// PatchServiceConfig already doesn't.
+	PutServiceConfig(context.Context, *PutServiceConfigRequest) (*PutServiceConfigResponse, error)
 	mustEmbedUnimplementedGitOpsServiceServer()
 }
 
@@ -887,6 +936,9 @@ func (UnimplementedGitOpsServiceServer) PatchServiceConfig(context.Context, *Pat
 }
 func (UnimplementedGitOpsServiceServer) GetServiceConfig(context.Context, *GetServiceConfigRequest) (*GetServiceConfigResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetServiceConfig not implemented")
+}
+func (UnimplementedGitOpsServiceServer) PutServiceConfig(context.Context, *PutServiceConfigRequest) (*PutServiceConfigResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PutServiceConfig not implemented")
 }
 func (UnimplementedGitOpsServiceServer) mustEmbedUnimplementedGitOpsServiceServer() {}
 func (UnimplementedGitOpsServiceServer) testEmbeddedByValue()                       {}
@@ -1096,6 +1148,24 @@ func _GitOpsService_GetServiceConfig_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GitOpsService_PutServiceConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PutServiceConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GitOpsServiceServer).PutServiceConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GitOpsService_PutServiceConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GitOpsServiceServer).PutServiceConfig(ctx, req.(*PutServiceConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // GitOpsService_ServiceDesc is the grpc.ServiceDesc for GitOpsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1142,6 +1212,10 @@ var GitOpsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetServiceConfig",
 			Handler:    _GitOpsService_GetServiceConfig_Handler,
+		},
+		{
+			MethodName: "PutServiceConfig",
+			Handler:    _GitOpsService_PutServiceConfig_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

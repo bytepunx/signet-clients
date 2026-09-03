@@ -42,4 +42,4 @@ plugins:
 # newer signet-proto release is ready to adopt, and commit the regenerated
 # gen/ in the same change.
 inputs:
-  - module: buf.build/bytepunx/signet-proto:v0.3.0
+  - module: buf.build/bytepunx/signet-proto:v0.4.0
