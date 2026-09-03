@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0](https://github.com/bytepunx/signet-clients/compare/rust-v0.5.0...rust-v0.6.0) (2026-09-03)
+
+
+### Features
+
+* **rust:** correct stale v0.3.0 pin comment after v0.4.0 bump ([c94480e](https://github.com/bytepunx/signet-clients/commit/c94480e9d9bd876ad6751bf7770296b79355cafd))
+
+
+### Bug Fixes
+
+* **ci:** make proto-bump releases actually trigger, stop committing build artifacts ([49be699](https://github.com/bytepunx/signet-clients/commit/49be699e2c6a3e665015968b9cb1a5b253fc3978))
+
 ## [0.5.0](https://github.com/bytepunx/signet-clients/compare/rust-v0.4.0...rust-v0.5.0) (2026-08-15)
 
 
