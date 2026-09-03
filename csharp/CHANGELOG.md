@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.0](https://github.com/bytepunx/signet-clients/compare/csharp-v0.5.0...csharp-v0.6.0) (2026-09-03)
+
+
+### Features
+
+* **csharp:** correct stale v0.3.0 pin comment after v0.4.0 bump ([1a06977](https://github.com/bytepunx/signet-clients/commit/1a069771f5c6f278a2861857f1993326934355f7))
+
+
+### Bug Fixes
+
+* **ci:** make proto-bump commits release-please-eligible, stop staging build artifacts ([7a0180f](https://github.com/bytepunx/signet-clients/commit/7a0180f1a63194835be209792b0285ab4afed8f5))
+* **ci:** make proto-bump releases actually trigger, stop committing build artifacts ([49be699](https://github.com/bytepunx/signet-clients/commit/49be699e2c6a3e665015968b9cb1a5b253fc3978))
+
 ## [0.5.0](https://github.com/bytepunx/signet-clients/compare/csharp-v0.4.0...csharp-v0.5.0) (2026-08-15)
 
 
