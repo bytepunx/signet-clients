@@ -13,10 +13,8 @@ plugins:
     out: src
 # Pinned independently of signet's own buf.gen.yaml and the other language
 # clients in this repo, to a tagged signet-proto release
-# (bytepunx/signet-clients#64 — this comment previously said "once tagged
-# releases exist"; some now do. v0.2.0 turned out to be stale — it predates
-# GitOpsService.GetServiceConfig, already relied on elsewhere — so this is
-# pinned to v0.3.0, the release that actually includes it). An unpinned
+# (bytepunx/signet-clients#64, bumped to v0.4.0 by #67's automation for
+# GitOpsService.PutServiceConfig). An unpinned
 # module reference floats on signet-proto's latest commit, so every
 # `buf generate` here silently picked up upstream schema changes —
 # including ones not yet released/tested. Bump deliberately when a newer

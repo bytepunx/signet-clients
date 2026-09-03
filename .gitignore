@@ -10,13 +10,17 @@ rust/target/
 # fresh by CI on every run.
 rust/Cargo.lock
 csharp/gen/
-csharp/bin/
-csharp/obj/
+# `csharp/bin/`/`csharp/obj/` only matched the library project's own build
+# output — `dotnet build` at the csharp root also builds every project
+# under examples/ and SignetClient.Tests/, each with its own bin/obj, which
+# slipped through uncommitted-artifact detection and got committed by the
+# proto-bump automation (bytepunx/signet-clients#67). `**/` covers every
+# project directory, present and future.
+csharp/**/bin/
+csharp/**/obj/
 # TypeScript: src/gen is committed (matching go/gen) now that the wrapper
 # layer is implemented. dist/ (build output) and node_modules/ (installed
 # dependencies) are never generated-schema-stub content, so they stay
 # ignored permanently regardless of implementation status.
 typescript/dist/
 typescript/node_modules/
-csharp/SignetClient.Tests/bin/
-csharp/SignetClient.Tests/obj/
