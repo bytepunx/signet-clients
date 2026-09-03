@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.0](https://github.com/bytepunx/signet-clients/compare/typescript-v0.8.0...typescript-v0.9.0) (2026-09-03)
+
+
+### Features
+
+* **typescript:** correct stale v0.3.0 pin comment after v0.4.0 bump ([5505a10](https://github.com/bytepunx/signet-clients/commit/5505a10b4199147f3d872a3e839960ed4ac440bd))
+
+
+### Bug Fixes
+
+* **ci:** make proto-bump releases actually trigger, stop committing build artifacts ([49be699](https://github.com/bytepunx/signet-clients/commit/49be699e2c6a3e665015968b9cb1a5b253fc3978))
+
 ## [0.8.0](https://github.com/bytepunx/signet-clients/compare/typescript-v0.7.0...typescript-v0.8.0) (2026-09-01)
 
 
